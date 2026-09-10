@@ -1,0 +1,331 @@
+// Cola tudo (DOM, config, Firebase) nos modulos puros. Esse arquivo aqui
+// nao tem teste automatizado (depende do navegador de verdade: DOM,
+// localStorage, Firebase), mas toda a logica que ele chama (progress.js,
+// filters.js, ratings.js, tmdb.js, storage-local.js, firebase-app.js) foi
+// escrita separada exatamente pra poder ser testada sem navegador. Se algo
+// der errado aqui, o mais provavel e' um erro de "encanamento" (id errado,
+// evento que nao disparou), nao de regra de negocio.
+
+import { calculateProgress, formatProgressLabel } from "./progress.js";
+import { availableYears, filterMovies, sortMoviesAlphabetically, sortMoviesByYear } from "./filters.js";
+import { averageRating, validateRating } from "./ratings.js";
+import { searchBarbieMovies } from "./tmdb.js";
+import { loadLocalProgress, saveLocalProgress, setRating, toggleWatched } from "./storage-local.js";
+
+const MOVIES_CACHE_KEY = "barbie-tracker:movies-cache";
+
+const el = {
+  configWarning: document.getElementById("config-warning"),
+  onboarding: document.getElementById("onboarding"),
+  appSection: document.getElementById("app-section"),
+  profileBar: document.getElementById("profile-bar"),
+  profileName: document.getElementById("profile-name"),
+  progressLabel: document.getElementById("progress-label"),
+  logoutBtn: document.getElementById("logout-btn"),
+  guestForm: document.getElementById("guest-form"),
+  guestNameInput: document.getElementById("guest-name"),
+  googleLoginBtn: document.getElementById("google-login-btn"),
+  googleLoginError: document.getElementById("google-login-error"),
+  searchInput: document.getElementById("search-input"),
+  yearFilter: document.getElementById("year-filter"),
+  onlyUnwatched: document.getElementById("only-unwatched"),
+  sortSelect: document.getElementById("sort-select"),
+  refreshBtn: document.getElementById("refresh-btn"),
+  listStatus: document.getElementById("list-status"),
+  movieGrid: document.getElementById("movie-grid"),
+};
+
+const state = {
+  profile: null, // { mode: "guest" | "google", id, name }
+  movies: [],
+  progress: { watched: [], ratings: {} },
+};
+
+let appConfig = null;
+let firebaseModule = null;
+let firebaseRefs = null; // { app, auth, db }
+
+init();
+
+async function init() {
+  appConfig = await loadConfig();
+
+  if (!appConfig || !appConfig.TMDB_API_KEY) {
+    el.configWarning.hidden = false;
+  }
+
+  if (appConfig && appConfig.FIREBASE_CONFIG) {
+    await setUpFirebase(appConfig.FIREBASE_CONFIG);
+  } else {
+    el.googleLoginBtn.disabled = true;
+  }
+
+  el.guestForm.addEventListener("submit", handleGuestLogin);
+  el.googleLoginBtn.addEventListener("click", handleGoogleLogin);
+  el.logoutBtn.addEventListener("click", handleLogout);
+  el.searchInput.addEventListener("input", render);
+  el.yearFilter.addEventListener("change", render);
+  el.onlyUnwatched.addEventListener("change", render);
+  el.sortSelect.addEventListener("change", render);
+  el.refreshBtn.addEventListener("click", () => loadMovies({ forceRefresh: true }));
+  el.movieGrid.addEventListener("click", handleGridClick);
+}
+
+async function loadConfig() {
+  try {
+    return await import("./config.js");
+  } catch {
+    return null;
+  }
+}
+
+async function setUpFirebase(firebaseConfig) {
+  try {
+    firebaseModule = await import("./firebase-app.js");
+    firebaseRefs = firebaseModule.initFirebase(firebaseConfig);
+    firebaseModule.watchAuthState(firebaseRefs.auth, (user) => {
+      if (user && !state.profile) {
+        loginWithGoogleUser(user);
+      }
+    });
+  } catch (error) {
+    console.error("Nao foi possivel iniciar o Firebase:", error);
+    el.googleLoginBtn.disabled = true;
+    el.googleLoginError.hidden = false;
+    el.googleLoginError.textContent = "Login com Google indisponivel agora (confira js/config.js).";
+  }
+}
+
+async function handleGuestLogin(event) {
+  event.preventDefault();
+  const name = el.guestNameInput.value.trim();
+  if (!name) {
+    return;
+  }
+  state.profile = { mode: "guest", id: name, name };
+  state.progress = loadLocalProgress(name);
+  await enterApp();
+}
+
+async function handleGoogleLogin() {
+  if (!firebaseModule || !firebaseRefs) {
+    return;
+  }
+  el.googleLoginError.hidden = true;
+  try {
+    const user = await firebaseModule.loginWithGoogle(firebaseRefs.auth);
+    await loginWithGoogleUser(user);
+  } catch (error) {
+    console.error("Falha no login com Google:", error);
+    el.googleLoginError.hidden = false;
+    el.googleLoginError.textContent = "Nao foi possivel entrar com Google. Tente de novo.";
+  }
+}
+
+async function loginWithGoogleUser(user) {
+  state.profile = { mode: "google", id: user.uid, name: user.displayName || "sua conta Google" };
+  state.progress = await firebaseModule.loadUserProgress(firebaseRefs.db, user.uid);
+  await enterApp();
+}
+
+async function handleLogout() {
+  if (state.profile && state.profile.mode === "google" && firebaseModule && firebaseRefs) {
+    try {
+      await firebaseModule.logout(firebaseRefs.auth);
+    } catch (error) {
+      console.error("Erro ao sair da conta Google:", error);
+    }
+  }
+  state.profile = null;
+  state.progress = { watched: [], ratings: {} };
+  el.appSection.hidden = true;
+  el.profileBar.hidden = true;
+  el.onboarding.hidden = false;
+}
+
+async function enterApp() {
+  el.onboarding.hidden = true;
+  el.profileBar.hidden = false;
+  el.appSection.hidden = false;
+  el.profileName.textContent = `Ola, ${state.profile.name}`;
+  await loadMovies({ forceRefresh: false });
+}
+
+async function loadMovies({ forceRefresh }) {
+  if (!forceRefresh) {
+    const cached = readMoviesCache();
+    if (cached) {
+      state.movies = cached;
+      populateYearFilter();
+      render();
+    }
+  }
+
+  if (!appConfig || !appConfig.TMDB_API_KEY) {
+    if (state.movies.length === 0) {
+      showListStatus("Sem chave da TMDB configurada, entao ainda nao da pra buscar os filmes.");
+    }
+    return;
+  }
+
+  if (!forceRefresh && state.movies.length > 0) {
+    return;
+  }
+
+  showListStatus("Buscando filmes na TMDB...");
+  try {
+    const movies = await searchBarbieMovies(appConfig.TMDB_API_KEY);
+    state.movies = movies;
+    saveMoviesCache(movies);
+    populateYearFilter();
+    hideListStatus();
+    render();
+  } catch (error) {
+    console.error("Erro ao buscar filmes na TMDB:", error);
+    showListStatus(
+      state.movies.length > 0
+        ? "Nao deu pra atualizar agora. Mostrando a ultima lista salva."
+        : "Nao deu pra buscar os filmes na TMDB agora. Confira sua chave e sua conexao.",
+    );
+  }
+}
+
+function readMoviesCache() {
+  try {
+    const raw = localStorage.getItem(MOVIES_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.movies) ? parsed.movies : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveMoviesCache(movies) {
+  try {
+    localStorage.setItem(MOVIES_CACHE_KEY, JSON.stringify({ movies, fetchedAt: Date.now() }));
+  } catch (error) {
+    console.error("Nao deu pra salvar o cache dos filmes:", error);
+  }
+}
+
+function populateYearFilter() {
+  const years = availableYears(state.movies);
+  const previousValue = el.yearFilter.value;
+  el.yearFilter.innerHTML =
+    '<option value="">Todos</option>' + years.map((year) => `<option value="${year}">${year}</option>`).join("");
+  el.yearFilter.value = years.some((year) => String(year) === previousValue) ? previousValue : "";
+}
+
+function showListStatus(message) {
+  el.listStatus.hidden = false;
+  el.listStatus.textContent = message;
+}
+
+function hideListStatus() {
+  el.listStatus.hidden = true;
+}
+
+function render() {
+  const filtered = filterMovies(state.movies, {
+    search: el.searchInput.value,
+    year: el.yearFilter.value ? Number(el.yearFilter.value) : null,
+    onlyUnwatched: el.onlyUnwatched.checked,
+    watchedIds: state.progress.watched,
+  });
+  const sorted = applySort(filtered, el.sortSelect.value);
+
+  el.movieGrid.innerHTML =
+    sorted.length > 0
+      ? sorted.map((movie) => movieCardHtml(movie)).join("")
+      : '<p class="empty-message">Nenhum filme encontrado com esses filtros.</p>';
+
+  const progress = calculateProgress(state.movies, state.progress.watched);
+  const avg = averageRating(state.progress.ratings);
+  el.progressLabel.textContent =
+    avg === null ? formatProgressLabel(progress) : `${formatProgressLabel(progress)} · nota media: ${avg}`;
+}
+
+function applySort(movies, sortKey) {
+  if (sortKey === "year-desc") {
+    return sortMoviesByYear(movies, "desc");
+  }
+  if (sortKey === "title-asc") {
+    return sortMoviesAlphabetically(movies, "asc");
+  }
+  return sortMoviesByYear(movies, "asc");
+}
+
+function movieCardHtml(movie) {
+  const watched = state.progress.watched.includes(movie.id);
+  const rating = state.progress.ratings[movie.id] || 0;
+  const safeTitle = escapeHtml(movie.title);
+
+  const poster = movie.posterPath
+    ? `<img class="movie-poster" src="${movie.posterPath}" alt="Poster de ${safeTitle}" loading="lazy" />`
+    : `<div class="poster-placeholder"><span>${safeTitle}</span></div>`;
+
+  const stars = [1, 2, 3, 4, 5]
+    .map(
+      (value) =>
+        `<button type="button" class="star${value <= rating ? " filled" : ""}" data-rating="${value}" aria-label="Dar nota ${value}">★</button>`,
+    )
+    .join("");
+
+  return `
+    <article class="movie-card" data-movie-id="${movie.id}">
+      ${poster}
+      <div class="movie-info">
+        <h3>${safeTitle} <span class="movie-year">(${movie.year})</span></h3>
+        <label class="watched-label">
+          <input type="checkbox" class="watched-checkbox" ${watched ? "checked" : ""} />
+          Assistido
+        </label>
+        <div class="stars">${stars}</div>
+      </div>
+    </article>
+  `;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function handleGridClick(event) {
+  const card = event.target.closest(".movie-card");
+  if (!card || !state.profile) {
+    return;
+  }
+  const movieId = Number(card.dataset.movieId);
+
+  if (event.target.matches(".star")) {
+    const validated = validateRating(event.target.dataset.rating);
+    if (validated === null) {
+      return;
+    }
+    state.progress = setRating(state.progress, movieId, validated);
+    persistProgress();
+    render();
+    return;
+  }
+
+  if (event.target.matches(".watched-checkbox")) {
+    state.progress = toggleWatched(state.progress, movieId);
+    persistProgress();
+    render();
+  }
+}
+
+function persistProgress() {
+  if (state.profile.mode === "guest") {
+    saveLocalProgress(state.profile.id, state.progress);
+  } else if (firebaseModule && firebaseRefs) {
+    firebaseModule.saveUserProgress(firebaseRefs.db, state.profile.id, state.progress).catch((error) => {
+      console.error("Erro ao salvar progresso no Firestore:", error);
+    });
+  }
+}

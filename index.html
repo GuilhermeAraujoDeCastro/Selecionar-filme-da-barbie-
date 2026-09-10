@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barbie Movies Tracker</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Barbie Movies Tracker</h1>
+    <div id="profile-bar" class="profile-bar" hidden>
+      <span id="profile-name"></span>
+      <span id="progress-label" class="progress-label"></span>
+      <button id="logout-btn" type="button">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="config-warning" class="config-warning" hidden>
+      <p>
+        Falta configurar esse projeto: copie <code>js/config.example.js</code> para
+        <code>js/config.js</code> e preencha com sua chave da TMDB (e, se quiser
+        login com Google, com os dados do seu projeto Firebase). Depois de
+        salvar o arquivo, recarregue esta pagina.
+      </p>
+    </section>
+
+    <section id="onboarding" class="onboarding">
+      <div class="onboarding-card">
+        <h2>Modo visitante</h2>
+        <p>Digite um nome. O progresso fica salvo neste navegador.</p>
+        <form id="guest-form">
+          <label for="guest-name">Seu nome</label>
+          <input id="guest-name" name="guest-name" type="text" required maxlength="40" placeholder="Ex: Ana" autocomplete="off" />
+          <button type="submit">Entrar</button>
+        </form>
+      </div>
+      <div class="onboarding-card">
+        <h2>Entrar com Google</h2>
+        <p>O progresso fica salvo na sua conta e sincroniza entre aparelhos.</p>
+        <button id="google-login-btn" type="button">Entrar com Google</button>
+        <p id="google-login-error" class="error-text" hidden></p>
+      </div>
+    </section>
+
+    <section id="app-section" class="app-section" hidden>
+      <div class="toolbar">
+        <input id="search-input" type="search" placeholder="Buscar por titulo..." />
+
+        <label class="field-label">
+          Ano
+          <select id="year-filter">
+            <option value="">Todos</option>
+          </select>
+        </label>
+
+        <label class="checkbox-label">
+          <input id="only-unwatched" type="checkbox" />
+          Somente nao assistidos
+        </label>
+
+        <label class="field-label">
+          Ordenar por
+          <select id="sort-select">
+            <option value="year-asc">Ano (mais antigo primeiro)</option>
+            <option value="year-desc">Ano (mais novo primeiro)</option>
+            <option value="title-asc">Titulo (A-Z)</option>
+          </select>
+        </label>
+
+        <button id="refresh-btn" type="button">Atualizar lista da TMDB</button>
+      </div>
+
+      <p id="list-status" class="list-status" hidden></p>
+
+      <div id="movie-grid" class="movie-grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Projeto de portfolio. Dados de filmes via TMDB.</p>
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "barbie-movies-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tracker dos filmes da Barbie, com progresso, notas e dados via TMDB.",
+  "scripts": {
+    "test": "node --test"
+  }
+}
