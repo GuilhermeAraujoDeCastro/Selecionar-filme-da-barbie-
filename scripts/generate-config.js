@@ -1,7 +1,7 @@
-// Roda no build do Netlify (veja netlify.toml) pra gerar js/config.js a
-// partir das variáveis de ambiente do site, em vez de commitar as chaves
-// no repositório. Localmente isso não precisa rodar: edite js/config.js
-// direto (veja o README, seção "Como rodar").
+// Roda no build da Vercel (veja vercel.json) pra gerar js/config.js a
+// partir das variaveis de ambiente do site, em vez de commitar as chaves
+// no repositorio. Localmente isso nao precisa rodar: edite js/config.js
+// direto (veja o README, secao "Como rodar").
 import { writeFileSync } from "node:fs";
 
 const obrigatorias = [
@@ -17,14 +17,14 @@ const obrigatorias = [
 const faltando = obrigatorias.filter((nome) => !process.env[nome]);
 if (faltando.length > 0) {
   console.warn(
-    `Aviso: faltam estas variáveis de ambiente no Netlify: ${faltando.join(", ")}. ` +
-      "O site publica mesmo assim, mas a busca de filmes e/ou o login com Google não vão funcionar até configurar."
+    `Aviso: faltam estas variaveis de ambiente na Vercel: ${faltando.join(", ")}. ` +
+      "O site publica mesmo assim, mas a busca de filmes e/ou o login com Google nao vao funcionar ate configurar."
   );
 }
 
-const conteudo = `// Gerado automaticamente pelo build do Netlify (scripts/generate-config.js).
-// Não edite este arquivo no repositório publicado — edite as variáveis de
-// ambiente do site (Site configuration > Environment variables).
+const conteudo = `// Gerado automaticamente pelo build da Vercel (scripts/generate-config.js).
+// Nao edite este arquivo no repositorio publicado: edite as variaveis de
+// ambiente do projeto (Project Settings > Environment Variables).
 export const TMDB_API_KEY = ${JSON.stringify(process.env.TMDB_API_KEY || "")};
 
 export const FIREBASE_CONFIG = {
@@ -38,4 +38,4 @@ export const FIREBASE_CONFIG = {
 `;
 
 writeFileSync(new URL("../js/config.js", import.meta.url), conteudo);
-console.log("js/config.js gerado a partir das variáveis de ambiente.");
+console.log("js/config.js gerado a partir das variaveis de ambiente.");

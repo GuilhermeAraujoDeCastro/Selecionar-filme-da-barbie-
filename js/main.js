@@ -18,7 +18,6 @@ const el = {
   configWarning: document.getElementById("config-warning"),
   onboarding: document.getElementById("onboarding"),
   appSection: document.getElementById("app-section"),
-  profileBar: document.getElementById("profile-bar"),
   profileName: document.getElementById("profile-name"),
   progressLabel: document.getElementById("progress-label"),
   logoutBtn: document.getElementById("logout-btn"),
@@ -30,9 +29,17 @@ const el = {
   yearFilter: document.getElementById("year-filter"),
   onlyUnwatched: document.getElementById("only-unwatched"),
   sortSelect: document.getElementById("sort-select"),
-  refreshBtn: document.getElementById("refresh-btn"),
+  refreshFab: document.getElementById("refresh-fab"),
   listStatus: document.getElementById("list-status"),
   movieGrid: document.getElementById("movie-grid"),
+  filterBtn: document.getElementById("filter-btn"),
+  filterSheet: document.getElementById("filter-sheet"),
+  sheetOverlay: document.getElementById("sheet-overlay"),
+  sheetClose: document.getElementById("sheet-close"),
+  bottomNav: document.getElementById("bottom-nav"),
+  navBtns: Array.from(document.querySelectorAll(".nav-btn")),
+  viewCollection: document.getElementById("view-collection"),
+  viewProfile: document.getElementById("view-profile"),
 };
 
 const state = {
@@ -67,8 +74,12 @@ async function init() {
   el.yearFilter.addEventListener("change", render);
   el.onlyUnwatched.addEventListener("change", render);
   el.sortSelect.addEventListener("change", render);
-  el.refreshBtn.addEventListener("click", () => loadMovies({ forceRefresh: true }));
+  el.refreshFab.addEventListener("click", () => loadMovies({ forceRefresh: true }));
   el.movieGrid.addEventListener("click", handleGridClick);
+  el.filterBtn.addEventListener("click", openFilterSheet);
+  el.sheetOverlay.addEventListener("click", closeFilterSheet);
+  el.sheetClose.addEventListener("click", closeFilterSheet);
+  el.navBtns.forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.view)));
 }
 
 async function loadConfig() {
@@ -139,16 +150,34 @@ async function handleLogout() {
   state.profile = null;
   state.progress = { watched: [], ratings: {} };
   el.appSection.hidden = true;
-  el.profileBar.hidden = true;
+  el.bottomNav.hidden = true;
+  el.filterSheet.hidden = true;
   el.onboarding.hidden = false;
 }
 
 async function enterApp() {
   el.onboarding.hidden = true;
-  el.profileBar.hidden = false;
   el.appSection.hidden = false;
+  el.bottomNav.hidden = false;
   el.profileName.textContent = `Ola, ${state.profile.name}`;
+  switchView("collection");
   await loadMovies({ forceRefresh: false });
+}
+
+function switchView(view) {
+  const isCollection = view === "collection";
+  el.viewCollection.hidden = !isCollection;
+  el.viewProfile.hidden = isCollection;
+  el.refreshFab.hidden = !isCollection;
+  el.navBtns.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
+}
+
+function openFilterSheet() {
+  el.filterSheet.hidden = false;
+}
+
+function closeFilterSheet() {
+  el.filterSheet.hidden = true;
 }
 
 async function loadMovies({ forceRefresh }) {

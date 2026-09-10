@@ -5,61 +5,79 @@
   --text: #33212c;
   --border: #f3c6df;
   --bg: #fff6fb;
+  --bg-outer: #ece3e8;
   --radius: 10px;
+  --radius-lg: 20px;
+  --shell-width: 480px;
+  --nav-height: 68px;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
+  min-height: 100%;
   font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg);
+  background: var(--bg-outer);
   color: var(--text);
+  display: flex;
+  justify-content: center;
+}
+
+/* Faixa central com largura de celular: em telas largas o app fica "flutuando"
+   no meio da pagina, com cara de tela de app; num celular de verdade o app-shell
+   ja ocupa a tela toda, entao a moldura desaparece sozinha. */
+.app-shell {
+  width: 100%;
+  max-width: var(--shell-width);
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(51, 33, 44, 0.05), 0 24px 60px rgba(51, 33, 44, 0.14);
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  padding-top: max(1rem, env(safe-area-inset-top));
   background: var(--pink);
   color: white;
 }
 
+.topbar-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
 .topbar h1 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
-.profile-bar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  font-size: 0.95rem;
+.app-main {
+  flex: 1;
+  padding: 1.1rem 1rem calc(var(--nav-height) + 1.5rem);
 }
 
-.profile-bar button {
-  background: white;
-  color: var(--pink-dark);
-  border: none;
-  border-radius: var(--radius);
-  padding: 0.4rem 0.9rem;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.profile-bar button:hover {
-  background: var(--pink-light);
-}
-
-main {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem;
+.app-credit {
+  text-align: center;
+  color: #886b7c;
+  font-size: 0.8rem;
+  margin: 1.5rem 0 0;
 }
 
 .config-warning {
@@ -67,7 +85,7 @@ main {
   border: 1px solid #ffe08a;
   border-radius: var(--radius);
   padding: 0.9rem 1.1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .config-warning code {
@@ -77,16 +95,17 @@ main {
 }
 
 .onboarding {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.onboarding-card {
+.onboarding-card,
+.profile-card {
   background: white;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  padding: 1.4rem;
 }
 
 .onboarding-card h2 {
@@ -97,7 +116,7 @@ main {
 .onboarding-card form {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .onboarding-card label {
@@ -107,52 +126,84 @@ main {
 
 input[type="text"],
 input[type="search"] {
-  padding: 0.5rem 0.7rem;
+  padding: 0.65rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 1rem;
+  min-height: 44px;
 }
 
 button {
   font-family: inherit;
 }
 
-.onboarding-card button,
-.toolbar button {
+.btn-primary {
   background: var(--pink);
   color: white;
   border: none;
   border-radius: var(--radius);
-  padding: 0.55rem 1rem;
+  padding: 0.7rem 1rem;
+  min-height: 46px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  background: var(--pink-dark);
+}
+
+.btn-primary:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--pink-light);
+  color: var(--pink-dark);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.6rem 1.1rem;
+  min-height: 44px;
   cursor: pointer;
   font-weight: 600;
 }
 
-.onboarding-card button:hover,
-.toolbar button:hover {
-  background: var(--pink-dark);
-}
-
-.onboarding-card button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
+.btn-secondary:hover {
+  background: #ffd0e7;
 }
 
 .error-text {
   color: #b3261e;
   font-size: 0.85rem;
+  margin: 0;
 }
 
-.toolbar {
+/* ---------- busca + filtros ---------- */
+.search-bar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 1rem;
+  gap: 0.5rem;
   margin-bottom: 1rem;
+}
+
+.search-bar input {
+  flex: 1;
+}
+
+.icon-btn {
   background: white;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--pink-light);
 }
 
 .field-label {
@@ -161,20 +212,28 @@ button {
   gap: 0.3rem;
   font-size: 0.85rem;
   font-weight: 600;
+  margin-bottom: 0.9rem;
 }
 
 .field-label select {
-  padding: 0.45rem 0.6rem;
+  padding: 0.55rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 0.95rem;
+  min-height: 44px;
 }
 
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.checkbox-label input {
+  width: 18px;
+  height: 18px;
 }
 
 .list-status {
@@ -182,10 +241,11 @@ button {
   font-style: italic;
 }
 
+/* ---------- grade de filmes ---------- */
 .movie-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.9rem;
 }
 
 .empty-message {
@@ -198,11 +258,11 @@ button {
 .movie-card {
   background: white;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(51, 33, 44, 0.08);
 }
 
 .movie-poster {
@@ -231,34 +291,34 @@ button {
 }
 
 .movie-info {
-  padding: 0.75rem;
+  padding: 0.7rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .movie-info h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.3;
 }
 
 .movie-year {
   color: #886b7c;
   font-weight: 400;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .watched-label {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
 .stars {
   display: flex;
-  gap: 0.15rem;
+  gap: 0.1rem;
 }
 
 .star {
@@ -279,9 +339,124 @@ button {
   color: var(--pink-dark);
 }
 
-footer {
+/* ---------- perfil ---------- */
+.profile-card {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.profile-avatar {
+  font-size: 2.4rem;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--pink-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.3rem;
+}
+
+.profile-card h2 {
+  margin: 0;
+  color: var(--pink-dark);
+  font-size: 1.15rem;
+}
+
+.progress-label {
   color: #886b7c;
-  font-size: 0.85rem;
-  padding: 1.5rem;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+/* ---------- menu inferior (bottom nav) ---------- */
+.bottom-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  background: white;
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: none;
+  border: none;
+  padding: 0.6rem 0.4rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #b191a4;
+  cursor: pointer;
+}
+
+.nav-btn span {
+  font-size: 1.35rem;
+}
+
+.nav-btn.active {
+  color: var(--pink-dark);
+}
+
+/* ---------- botao flutuante (FAB) ---------- */
+.fab {
+  position: fixed;
+  bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
+  right: max(16px, calc(50vw - (var(--shell-width) / 2) + 16px));
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--pink);
+  color: white;
+  font-size: 1.3rem;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(163, 16, 106, 0.4);
+  z-index: 15;
+}
+
+.fab:hover {
+  background: var(--pink-dark);
+}
+
+/* ---------- painel de filtros (bottom sheet) ---------- */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(51, 33, 44, 0.35);
+  z-index: 29;
+}
+
+.sheet-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(100%, var(--shell-width));
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 0.6rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
+  z-index: 30;
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  margin: 0.4rem auto 1rem;
+}
+
+.sheet-panel h3 {
+  margin: 0 0 1rem;
+  color: var(--pink-dark);
 }

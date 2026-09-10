@@ -4,6 +4,10 @@ Site pra acompanhar quais filmes da Barbie você já assistiu, dar nota de 1 a 5
 
 Dá pra usar de dois jeitos: só digitando um nome (modo visitante, progresso salvo no navegador) ou entrando com a conta Google (progresso salvo na nuvem via Firebase, sincroniza entre aparelhos).
 
+## Layout de app de celular
+
+A tela fica numa faixa central com largura de celular (480px), com cabeçalho fixo no topo e um menu fixo embaixo com duas abas, Coleção e Perfil, em vez do layout de site largo que o projeto tinha antes. Isso vale tanto no celular (onde a faixa já ocupa a tela toda) quanto no computador (onde ela fica centralizada, com uma sombra ao redor, para dar a mesma sensação de app). Os filtros (ano, ordenação, somente não assistidos) saíram da barra de ferramentas e viraram um painel que sobe de baixo (bottom sheet) ao tocar no botão de engrenagem ao lado da busca, e o botão de atualizar a lista da TMDB virou um botão flutuante circular no canto inferior direito. Isso é só CSS/HTML/JS, não é um app instalável (sem ícone na tela inicial nem funcionamento offline).
+
 ## Por que não existe uma "collection" da Barbie na TMDB
 
 Antes de escrever o `js/tmdb.js` eu procurei um jeito de buscar os filmes por um ID de collection fixo, que seria mais direto. Só que a TMDB não tem uma collection única reunindo todos os filmes: existem várias fragmentadas (Barbie Collection, Barbie Fairytopia Collection, Barbie Mariposa Collection, entre outras), cada uma cobrindo só uma sub-série. Por isso o `searchBarbieMovies` busca por texto ("Barbie") no endpoint de busca normal de filmes e filtra o resultado pelo título, com uma trava de segurança de no máximo 5 páginas.
@@ -56,11 +60,11 @@ O `js/main.js` (o arquivo que liga tudo isso na página: formulários, cliques, 
 
 O que eu não consegui testar foi o `js/firebase-app.js` (login com Google e leitura/escrita no Firestore) contra um projeto Firebase de verdade, porque isso exige uma conta e uma config real que só você tem, e o ambiente onde escrevi esse projeto não tem acesso à rede pro Firebase. O código segue a documentação oficial do SDK modular (`initializeApp`, `getAuth`, `signInWithPopup`, `getFirestore`, `doc`/`getDoc`/`setDoc`), mas antes de confiar 100% nisso, testa na prática depois de configurar seu `js/config.js`: entra com Google, marca um filme como assistido, dá uma nota, recarrega a página e confere se o progresso continua lá. Se der algum erro, abre o console do navegador (F12) que a mensagem deve ajudar a achar o problema.
 
-## Publicando (Netlify ou Vercel)
+## Publicando (Vercel)
 
 Esse projeto é HTML, CSS e JS estático, mas tem um passo de build pequeno só pra gerar o `js/config.js` (que fica fora do git) a partir de variáveis de ambiente, assim a chave da TMDB e o config do Firebase não ficam expostos no repositório público.
 
-No Netlify: conecte o repositório, e em **Site configuration > Build & deploy > Environment variables** cadastre:
+Conecte o repositório na Vercel e, em **Project Settings > Environment Variables**, cadastre:
 
 ```
 TMDB_API_KEY
@@ -72,11 +76,9 @@ FIREBASE_MESSAGING_SENDER_ID
 FIREBASE_APP_ID
 ```
 
-O `netlify.toml` já está configurado com o comando de build (`node scripts/generate-config.js`) e a pasta de publicação (`.`), então não precisa mexer em nada na tela de build settings, só cadastrar essas variáveis com os valores do seu `js/config.js` local.
+O `vercel.json` já diz pra Vercel rodar `node scripts/generate-config.js` no build e servir a raiz do projeto como está, então não precisa mexer nas build settings, só cadastrar essas variáveis com os valores do seu `js/config.js` local.
 
-Na Vercel o equivalente é cadastrar as mesmas variáveis em **Project Settings > Environment Variables** e definir o Build Command como `node scripts/generate-config.js` (a Vercel não lê o `netlify.toml`).
-
-Nos dois casos, não esqueça do passo de "Authorized domains" no Firebase (seção acima) se for usar o login com Google. Adiciona o domínio que a Netlify/Vercel te der depois do primeiro deploy.
+Não esqueça do passo de "Authorized domains" no Firebase (seção acima) se for usar o login com Google. Adiciona o domínio que a Vercel te der (algo como `seu-projeto.vercel.app`) depois do primeiro deploy.
 
 ## Estrutura do projeto
 
@@ -93,7 +95,7 @@ js/
   main.js                       liga tudo isso na página (DOM)
   config.example.js              modelo de config (copiar pra config.js)
 scripts/
-  generate-config.js       gera js/config.js a partir de variáveis de ambiente (só roda no build da Netlify/Vercel)
-netlify.toml              build command e pasta de publicação pro Netlify
+  generate-config.js       gera js/config.js a partir de variáveis de ambiente (só roda no build da Vercel)
+vercel.json                build command e pasta de publicação pra Vercel
 tests/                    testes automatizados (Node --test), um arquivo por módulo
 ```

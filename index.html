@@ -2,51 +2,92 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Barbie Movies Tracker</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <h1>Barbie Movies Tracker</h1>
-    <div id="profile-bar" class="profile-bar" hidden>
-      <span id="profile-name"></span>
-      <span id="progress-label" class="progress-label"></span>
-      <button id="logout-btn" type="button">Sair</button>
-    </div>
-  </header>
+  <div class="app-shell">
+    <header class="topbar">
+      <span class="topbar-icon" aria-hidden="true">🎀</span>
+      <h1>Barbie Movies Tracker</h1>
+    </header>
 
-  <main>
-    <section id="config-warning" class="config-warning" hidden>
-      <p>
-        Falta configurar esse projeto: copie <code>js/config.example.js</code> para
-        <code>js/config.js</code> e preencha com sua chave da TMDB (e, se quiser
-        login com Google, com os dados do seu projeto Firebase). Depois de
-        salvar o arquivo, recarregue esta pagina.
-      </p>
-    </section>
+    <main class="app-main">
+      <section id="config-warning" class="config-warning" hidden>
+        <p>
+          Falta configurar esse projeto: copie <code>js/config.example.js</code> para
+          <code>js/config.js</code> e preencha com sua chave da TMDB (e, se quiser
+          login com Google, com os dados do seu projeto Firebase). Depois de
+          salvar o arquivo, recarregue esta pagina.
+        </p>
+      </section>
 
-    <section id="onboarding" class="onboarding">
-      <div class="onboarding-card">
-        <h2>Modo visitante</h2>
-        <p>Digite um nome. O progresso fica salvo neste navegador.</p>
-        <form id="guest-form">
-          <label for="guest-name">Seu nome</label>
-          <input id="guest-name" name="guest-name" type="text" required maxlength="40" placeholder="Ex: Ana" autocomplete="off" />
-          <button type="submit">Entrar</button>
-        </form>
-      </div>
-      <div class="onboarding-card">
-        <h2>Entrar com Google</h2>
-        <p>O progresso fica salvo na sua conta e sincroniza entre aparelhos.</p>
-        <button id="google-login-btn" type="button">Entrar com Google</button>
-        <p id="google-login-error" class="error-text" hidden></p>
-      </div>
-    </section>
+      <section id="onboarding" class="onboarding">
+        <div class="onboarding-card">
+          <h2>Modo visitante</h2>
+          <p>Digite um nome. O progresso fica salvo neste navegador.</p>
+          <form id="guest-form">
+            <label for="guest-name">Seu nome</label>
+            <input id="guest-name" name="guest-name" type="text" required maxlength="40" placeholder="Ex: Ana" autocomplete="off" />
+            <button type="submit" class="btn-primary">Entrar</button>
+          </form>
+        </div>
+        <div class="onboarding-card">
+          <h2>Entrar com Google</h2>
+          <p>O progresso fica salvo na sua conta e sincroniza entre aparelhos.</p>
+          <button id="google-login-btn" type="button" class="btn-primary">Entrar com Google</button>
+          <p id="google-login-error" class="error-text" hidden></p>
+        </div>
+        <p class="app-credit">Projeto de portfolio. Dados de filmes via TMDB.</p>
+      </section>
 
-    <section id="app-section" class="app-section" hidden>
-      <div class="toolbar">
-        <input id="search-input" type="search" placeholder="Buscar por titulo..." />
+      <section id="app-section" class="app-section" hidden>
+        <div id="view-collection" class="view">
+          <div class="search-bar">
+            <input id="search-input" type="search" placeholder="Buscar por titulo..." />
+            <button id="filter-btn" type="button" class="icon-btn" aria-label="Abrir filtros">
+              <span aria-hidden="true">⚙️</span>
+            </button>
+          </div>
+
+          <p id="list-status" class="list-status" hidden></p>
+
+          <div id="movie-grid" class="movie-grid"></div>
+        </div>
+
+        <div id="view-profile" class="view" hidden>
+          <div class="profile-card">
+            <div class="profile-avatar" aria-hidden="true">🙂</div>
+            <h2 id="profile-name"></h2>
+            <p id="progress-label" class="progress-label"></p>
+            <button id="logout-btn" type="button" class="btn-secondary">Sair</button>
+          </div>
+          <p class="app-credit">Projeto de portfolio. Dados de filmes via TMDB.</p>
+        </div>
+
+        <button id="refresh-fab" type="button" class="fab" aria-label="Atualizar lista da TMDB" title="Atualizar lista da TMDB">
+          <span aria-hidden="true">⟳</span>
+        </button>
+      </section>
+    </main>
+
+    <nav id="bottom-nav" class="bottom-nav" hidden>
+      <button type="button" class="nav-btn active" data-view="collection">
+        <span aria-hidden="true">🎬</span>
+        Coleção
+      </button>
+      <button type="button" class="nav-btn" data-view="profile">
+        <span aria-hidden="true">🙂</span>
+        Perfil
+      </button>
+    </nav>
+
+    <div id="filter-sheet" class="sheet" hidden>
+      <div id="sheet-overlay" class="sheet-overlay"></div>
+      <div class="sheet-panel">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h3>Filtros</h3>
 
         <label class="field-label">
           Ano
@@ -69,18 +110,10 @@
           </select>
         </label>
 
-        <button id="refresh-btn" type="button">Atualizar lista da TMDB</button>
+        <button type="button" id="sheet-close" class="btn-primary">Aplicar</button>
       </div>
-
-      <p id="list-status" class="list-status" hidden></p>
-
-      <div id="movie-grid" class="movie-grid"></div>
-    </section>
-  </main>
-
-  <footer>
-    <p>Projeto de portfolio. Dados de filmes via TMDB.</p>
-  </footer>
+    </div>
+  </div>
 
   <script type="module" src="js/main.js"></script>
 </body>
