@@ -16,6 +16,17 @@
   box-sizing: border-box;
 }
 
+/* Varias secoes aqui embaixo (.onboarding, .bottom-nav) tem um "display"
+   proprio (flex) pra quando estao visiveis. Isso, sem essa regra, quebra o
+   atributo "hidden" do HTML: a regra padrao do navegador pra [hidden] e'
+   display:none, mas uma regra de autor com display explicito (tipo
+   .onboarding{display:flex}) tem prioridade sobre o padrao do navegador
+   mesmo com a mesma especificidade, entao o elemento ficava visivel mesmo
+   marcado como hidden. Essa regra garante que hidden sempre vence. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   height: 100%;
 }

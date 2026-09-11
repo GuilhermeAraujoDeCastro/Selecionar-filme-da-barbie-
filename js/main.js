@@ -10,7 +10,15 @@ import { calculateProgress, formatProgressLabel } from "./progress.js";
 import { availableYears, filterMovies, sortMoviesAlphabetically, sortMoviesByYear } from "./filters.js";
 import { averageRating, validateRating } from "./ratings.js";
 import { searchBarbieMovies } from "./tmdb.js";
-import { loadLocalProgress, saveLocalProgress, setRating, toggleWatched } from "./storage-local.js";
+import {
+  clearLastGuestName,
+  loadLastGuestName,
+  loadLocalProgress,
+  saveLastGuestName,
+  saveLocalProgress,
+  setRating,
+  toggleWatched,
+} from "./storage-local.js";
 
 const MOVIES_CACHE_KEY = "barbie-tracker:movies-cache";
 
@@ -65,6 +73,7 @@ async function init() {
     await setUpFirebase(appConfig.FIREBASE_CONFIG);
   } else {
     el.googleLoginBtn.disabled = true;
+    await tryAutoLoginGuest();
   }
 
   el.guestForm.addEventListener("submit", handleGuestLogin);
@@ -97,6 +106,10 @@ async function setUpFirebase(firebaseConfig) {
     firebaseModule.watchAuthState(firebaseRefs.auth, (user) => {
       if (user && !state.profile) {
         loginWithGoogleUser(user);
+      } else if (!user && !state.profile) {
+        // Ninguem logado com Google (ou nunca esteve): tenta reabrir a
+        // sessao do ultimo visitante, se tiver uma salva.
+        tryAutoLoginGuest();
       }
     });
   } catch (error) {
@@ -104,7 +117,24 @@ async function setUpFirebase(firebaseConfig) {
     el.googleLoginBtn.disabled = true;
     el.googleLoginError.hidden = false;
     el.googleLoginError.textContent = "Login com Google indisponivel agora (confira js/config.js).";
+    await tryAutoLoginGuest();
   }
+}
+
+// Reabre a sessao do ultimo visitante sozinho, sem precisar digitar o nome
+// de novo a cada recarregamento de pagina. So' age se ninguem ja' entrou
+// (por Google ou por outro caminho) e se existir um nome de visitante salvo.
+async function tryAutoLoginGuest() {
+  if (state.profile) {
+    return;
+  }
+  const lastName = loadLastGuestName();
+  if (!lastName) {
+    return;
+  }
+  state.profile = { mode: "guest", id: lastName, name: lastName };
+  state.progress = loadLocalProgress(lastName);
+  await enterApp();
 }
 
 async function handleGuestLogin(event) {
@@ -115,6 +145,7 @@ async function handleGuestLogin(event) {
   }
   state.profile = { mode: "guest", id: name, name };
   state.progress = loadLocalProgress(name);
+  saveLastGuestName(name);
   await enterApp();
 }
 
@@ -146,6 +177,9 @@ async function handleLogout() {
     } catch (error) {
       console.error("Erro ao sair da conta Google:", error);
     }
+  }
+  if (state.profile && state.profile.mode === "guest") {
+    clearLastGuestName();
   }
   state.profile = null;
   state.progress = { watched: [], ratings: {} };

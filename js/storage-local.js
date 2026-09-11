@@ -3,6 +3,7 @@
 // aparelhos, mas funciona na hora, sem depender do Firebase).
 
 const KEY_PREFIX = "barbie-tracker:";
+const LAST_GUEST_KEY = "barbie-tracker:last-guest";
 
 function emptyProgress() {
   return { watched: [], ratings: {} };
@@ -40,4 +41,20 @@ export function toggleWatched(progress, movieId) {
 
 export function setRating(progress, movieId, rating) {
   return { ...progress, ratings: { ...progress.ratings, [movieId]: rating } };
+}
+
+// Guarda so' o nome do ultimo visitante que entrou, pra reabrir a sessao
+// dele sozinho na proxima visita (sem precisar digitar o nome de novo).
+// O progresso em si continua em barbie-tracker:<nome>, isso aqui e so' um
+// "lembrete" de qual nome usar.
+export function loadLastGuestName() {
+  return localStorage.getItem(LAST_GUEST_KEY);
+}
+
+export function saveLastGuestName(profileName) {
+  localStorage.setItem(LAST_GUEST_KEY, profileName);
+}
+
+export function clearLastGuestName() {
+  localStorage.removeItem(LAST_GUEST_KEY);
 }

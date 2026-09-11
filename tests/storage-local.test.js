@@ -1,7 +1,10 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
+  clearLastGuestName,
+  loadLastGuestName,
   loadLocalProgress,
+  saveLastGuestName,
   saveLocalProgress,
   setRating,
   toggleWatched,
@@ -19,6 +22,9 @@ class FakeLocalStorage {
   }
   setItem(key, value) {
     this.store.set(key, value);
+  }
+  removeItem(key) {
+    this.store.delete(key);
   }
 }
 
@@ -71,4 +77,25 @@ test("setRating adds a rating without touching the others", () => {
   const progress = { watched: [], ratings: { 1: 5 } };
   const result = setRating(progress, 2, 3);
   assert.deepEqual(result.ratings, { 1: 5, 2: 3 });
+});
+
+test("loadLastGuestName with nothing saved returns null", () => {
+  assert.equal(loadLastGuestName(), null);
+});
+
+test("saveLastGuestName then loadLastGuestName round-trips correctly", () => {
+  saveLastGuestName("Ana");
+  assert.equal(loadLastGuestName(), "Ana");
+});
+
+test("saveLastGuestName overwrites a previously saved name", () => {
+  saveLastGuestName("Ana");
+  saveLastGuestName("Beatriz");
+  assert.equal(loadLastGuestName(), "Beatriz");
+});
+
+test("clearLastGuestName removes the saved name", () => {
+  saveLastGuestName("Ana");
+  clearLastGuestName();
+  assert.equal(loadLastGuestName(), null);
 });

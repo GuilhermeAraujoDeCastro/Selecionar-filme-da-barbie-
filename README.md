@@ -42,7 +42,7 @@ Antes de escrever o `js/tmdb.js` eu procurei um jeito de buscar os filmes por um
 2. Em Build > Authentication > Sign-in method, ative o provedor "Google".
 3. Em Build > Firestore Database, crie o banco.
 4. Em Configurações do projeto > Geral > Seus apps, crie um "app da Web" e copia o objeto de config gerado pro `FIREBASE_CONFIG` do seu `js/config.js`.
-5. Quando for publicar o site (Netlify, Vercel etc.), volta em Authentication > Settings > Authorized domains e adiciona o domínio publicado. Sem isso o login com Google funciona no localhost mas falha no site publicado.
+5. Quando for publicar o site na Vercel, volta em Authentication > Settings > Authorized domains e adiciona o domínio publicado. Sem isso o login com Google funciona no localhost mas falha no site publicado.
 
 ## Rodando os testes
 
@@ -76,9 +76,13 @@ FIREBASE_MESSAGING_SENDER_ID
 FIREBASE_APP_ID
 ```
 
-O `vercel.json` já diz pra Vercel rodar `node scripts/generate-config.js` no build e servir a raiz do projeto como está, então não precisa mexer nas build settings, só cadastrar essas variáveis com os valores do seu `js/config.js` local.
+O `vercel.json` já diz pra Vercel rodar `npm run build` (que gera o `js/config.js` e depois minifica o JS/CSS publicado, veja a seção abaixo) e servir a raiz do projeto como está, então não precisa mexer nas build settings, só cadastrar essas variáveis com os valores do seu `js/config.js` local.
 
 Não esqueça do passo de "Authorized domains" no Firebase (seção acima) se for usar o login com Google. Adiciona o domínio que a Vercel te der (algo como `seu-projeto.vercel.app`) depois do primeiro deploy.
+
+## Minificação do código publicado
+
+O `npm run build` (que a Vercel roda sozinha a cada deploy) também minifica o JS e o CSS que vão pro navegador com as bibliotecas `terser` (JS) e `clean-css` (CSS): tira comentário e espaço em branco e dá nome curto pras variáveis internas de cada função. Isso é só estética, pra não deixar o código tão confortável de ler em "Ver código-fonte"/F12. Não é e não substitui proteção de verdade: qualquer coisa que roda no navegador de quem visita pode ser vista por ele de algum jeito, minificado ou não. O que esse projeto expõe no navegador (chave da TMDB, config do Firebase) já é público por design, então não tem segredo real sendo escondido aqui, só um código menos confortável de ler à toa. O código-fonte continua legível no repositório e ao rodar localmente; só a cópia publicada na Vercel fica minificada.
 
 ## Estrutura do projeto
 
@@ -96,6 +100,7 @@ js/
   config.example.js              modelo de config (copiar pra config.js)
 scripts/
   generate-config.js       gera js/config.js a partir de variáveis de ambiente (só roda no build da Vercel)
+  minify.js                 minifica o JS/CSS publicado (cosmético, só roda no build da Vercel)
 vercel.json                build command e pasta de publicação pra Vercel
 tests/                    testes automatizados (Node --test), um arquivo por módulo
 ```
