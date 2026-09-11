@@ -39,6 +39,21 @@
           <button id="google-login-btn" type="button" class="btn-primary">Entrar com Google</button>
           <p id="google-login-error" class="error-text" hidden></p>
         </div>
+        <div class="onboarding-card">
+          <h2>Entrar com email</h2>
+          <p>Crie uma conta ou entre com email e senha. O progresso fica salvo na nuvem e sincroniza entre aparelhos.</p>
+          <form id="email-form">
+            <label for="email-input">Email</label>
+            <input id="email-input" name="email" type="email" required autocomplete="email" placeholder="seu@email.com" />
+            <label for="password-input">Senha</label>
+            <input id="password-input" name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="Minimo 6 caracteres" />
+            <div class="email-actions">
+              <button type="submit" id="email-login-btn" class="btn-primary">Entrar</button>
+              <button type="button" id="email-signup-btn" class="btn-secondary">Criar conta</button>
+            </div>
+            <p id="email-login-error" class="error-text" hidden></p>
+          </form>
+        </div>
         <p class="app-credit">Dados de filmes via TMDB.</p>
       </section>
 
@@ -63,6 +78,12 @@
             <p id="progress-label" class="progress-label"></p>
             <button id="logout-btn" type="button" class="btn-secondary">Sair</button>
           </div>
+
+          <section class="watched-section">
+            <h3>Filmes assistidos</h3>
+            <div id="watched-grid" class="movie-grid"></div>
+          </section>
+
           <p class="app-credit">Dados de filmes via TMDB.</p>
         </div>
 

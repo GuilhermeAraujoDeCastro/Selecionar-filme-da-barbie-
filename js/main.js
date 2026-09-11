@@ -7,7 +7,13 @@
 // evento que nao disparou), nao de regra de negocio.
 
 import { calculateProgress, formatProgressLabel } from "./progress.js";
-import { availableYears, filterMovies, sortMoviesAlphabetically, sortMoviesByYear } from "./filters.js";
+import {
+  availableYears,
+  filterMovies,
+  sortMoviesAlphabetically,
+  sortMoviesByYear,
+  splitByCompletion,
+} from "./filters.js";
 import { averageRating, validateRating } from "./ratings.js";
 import { searchBarbieMovies } from "./tmdb.js";
 import {
@@ -33,6 +39,12 @@ const el = {
   guestNameInput: document.getElementById("guest-name"),
   googleLoginBtn: document.getElementById("google-login-btn"),
   googleLoginError: document.getElementById("google-login-error"),
+  emailForm: document.getElementById("email-form"),
+  emailInput: document.getElementById("email-input"),
+  passwordInput: document.getElementById("password-input"),
+  emailLoginBtn: document.getElementById("email-login-btn"),
+  emailSignupBtn: document.getElementById("email-signup-btn"),
+  emailLoginError: document.getElementById("email-login-error"),
   searchInput: document.getElementById("search-input"),
   yearFilter: document.getElementById("year-filter"),
   onlyUnwatched: document.getElementById("only-unwatched"),
@@ -40,6 +52,7 @@ const el = {
   refreshFab: document.getElementById("refresh-fab"),
   listStatus: document.getElementById("list-status"),
   movieGrid: document.getElementById("movie-grid"),
+  watchedGrid: document.getElementById("watched-grid"),
   filterBtn: document.getElementById("filter-btn"),
   filterSheet: document.getElementById("filter-sheet"),
   sheetOverlay: document.getElementById("sheet-overlay"),
@@ -51,7 +64,7 @@ const el = {
 };
 
 const state = {
-  profile: null, // { mode: "guest" | "google", id, name }
+  profile: null, // { mode: "guest" | "google" | "email", id, name }
   movies: [],
   progress: { watched: [], ratings: {} },
 };
@@ -73,11 +86,15 @@ async function init() {
     await setUpFirebase(appConfig.FIREBASE_CONFIG);
   } else {
     el.googleLoginBtn.disabled = true;
+    el.emailLoginBtn.disabled = true;
+    el.emailSignupBtn.disabled = true;
     await tryAutoLoginGuest();
   }
 
   el.guestForm.addEventListener("submit", handleGuestLogin);
   el.googleLoginBtn.addEventListener("click", handleGoogleLogin);
+  el.emailForm.addEventListener("submit", handleEmailLogin);
+  el.emailSignupBtn.addEventListener("click", handleEmailSignup);
   el.logoutBtn.addEventListener("click", handleLogout);
   el.searchInput.addEventListener("input", render);
   el.yearFilter.addEventListener("change", render);
@@ -85,6 +102,7 @@ async function init() {
   el.sortSelect.addEventListener("change", render);
   el.refreshFab.addEventListener("click", () => loadMovies({ forceRefresh: true }));
   el.movieGrid.addEventListener("click", handleGridClick);
+  el.watchedGrid.addEventListener("click", handleGridClick);
   el.filterBtn.addEventListener("click", openFilterSheet);
   el.sheetOverlay.addEventListener("click", closeFilterSheet);
   el.sheetClose.addEventListener("click", closeFilterSheet);
@@ -105,9 +123,9 @@ async function setUpFirebase(firebaseConfig) {
     firebaseRefs = firebaseModule.initFirebase(firebaseConfig);
     firebaseModule.watchAuthState(firebaseRefs.auth, (user) => {
       if (user && !state.profile) {
-        loginWithGoogleUser(user);
+        loginWithFirebaseUser(user, firebaseProviderMode(user));
       } else if (!user && !state.profile) {
-        // Ninguem logado com Google (ou nunca esteve): tenta reabrir a
+        // Ninguem logado com Firebase (ou nunca esteve): tenta reabrir a
         // sessao do ultimo visitante, se tiver uma salva.
         tryAutoLoginGuest();
       }
@@ -115,15 +133,25 @@ async function setUpFirebase(firebaseConfig) {
   } catch (error) {
     console.error("Nao foi possivel iniciar o Firebase:", error);
     el.googleLoginBtn.disabled = true;
+    el.emailLoginBtn.disabled = true;
+    el.emailSignupBtn.disabled = true;
     el.googleLoginError.hidden = false;
     el.googleLoginError.textContent = "Login com Google indisponivel agora (confira js/config.js).";
     await tryAutoLoginGuest();
   }
 }
 
+// Descobre se quem acabou de entrar veio do Google ou de email/senha, so'
+// pra guardar o "mode" certo no perfil (nao muda nada em como o progresso
+// e' salvo: os dois usam o mesmo Firestore, por uid).
+function firebaseProviderMode(user) {
+  const providerId = user.providerData[0] && user.providerData[0].providerId;
+  return providerId === "google.com" ? "google" : "email";
+}
+
 // Reabre a sessao do ultimo visitante sozinho, sem precisar digitar o nome
 // de novo a cada recarregamento de pagina. So' age se ninguem ja' entrou
-// (por Google ou por outro caminho) e se existir um nome de visitante salvo.
+// (por Firebase ou por outro caminho) e se existir um nome de visitante salvo.
 async function tryAutoLoginGuest() {
   if (state.profile) {
     return;
@@ -156,7 +184,7 @@ async function handleGoogleLogin() {
   el.googleLoginError.hidden = true;
   try {
     const user = await firebaseModule.loginWithGoogle(firebaseRefs.auth);
-    await loginWithGoogleUser(user);
+    await loginWithFirebaseUser(user, "google");
   } catch (error) {
     console.error("Falha no login com Google:", error);
     el.googleLoginError.hidden = false;
@@ -164,18 +192,75 @@ async function handleGoogleLogin() {
   }
 }
 
-async function loginWithGoogleUser(user) {
-  state.profile = { mode: "google", id: user.uid, name: user.displayName || "sua conta Google" };
+async function handleEmailLogin(event) {
+  event.preventDefault();
+  if (!firebaseModule || !firebaseRefs) {
+    return;
+  }
+  el.emailLoginError.hidden = true;
+  const email = el.emailInput.value.trim();
+  const password = el.passwordInput.value;
+  try {
+    const user = await firebaseModule.loginWithEmail(firebaseRefs.auth, email, password);
+    await loginWithFirebaseUser(user, "email");
+  } catch (error) {
+    console.error("Falha no login com email:", error);
+    el.emailLoginError.hidden = false;
+    el.emailLoginError.textContent = emailErrorMessage(error);
+  }
+}
+
+async function handleEmailSignup() {
+  if (!firebaseModule || !firebaseRefs) {
+    return;
+  }
+  el.emailLoginError.hidden = true;
+  const email = el.emailInput.value.trim();
+  const password = el.passwordInput.value;
+  if (!email || !password) {
+    el.emailLoginError.hidden = false;
+    el.emailLoginError.textContent = "Preencha email e senha pra criar a conta.";
+    return;
+  }
+  try {
+    const user = await firebaseModule.signUpWithEmail(firebaseRefs.auth, email, password);
+    await loginWithFirebaseUser(user, "email");
+  } catch (error) {
+    console.error("Falha ao criar conta:", error);
+    el.emailLoginError.hidden = false;
+    el.emailLoginError.textContent = emailErrorMessage(error);
+  }
+}
+
+// Traduz os codigos de erro mais comuns do Firebase Auth pra uma mensagem
+// que faz sentido em portugues. Codigo que a gente nao mapeou cai numa
+// mensagem generica em vez de mostrar o texto tecnico em ingles.
+function emailErrorMessage(error) {
+  const messages = {
+    "auth/invalid-email": "Email invalido.",
+    "auth/missing-password": "Digite uma senha.",
+    "auth/weak-password": "Senha muito curta (minimo 6 caracteres).",
+    "auth/email-already-in-use": "Ja existe uma conta com esse email. Tenta entrar em vez de criar.",
+    "auth/user-not-found": "Nao existe conta com esse email. Tenta criar uma conta.",
+    "auth/wrong-password": "Senha incorreta.",
+    "auth/invalid-credential": "Email ou senha incorretos.",
+    "auth/too-many-requests": "Muitas tentativas. Espera um pouco e tenta de novo.",
+  };
+  return messages[error && error.code] || "Nao foi possivel completar. Tenta de novo.";
+}
+
+async function loginWithFirebaseUser(user, mode) {
+  state.profile = { mode, id: user.uid, name: user.displayName || user.email || "sua conta" };
   state.progress = await firebaseModule.loadUserProgress(firebaseRefs.db, user.uid);
   await enterApp();
 }
 
 async function handleLogout() {
-  if (state.profile && state.profile.mode === "google" && firebaseModule && firebaseRefs) {
+  if (state.profile && state.profile.mode !== "guest" && firebaseModule && firebaseRefs) {
     try {
       await firebaseModule.logout(firebaseRefs.auth);
     } catch (error) {
-      console.error("Erro ao sair da conta Google:", error);
+      console.error("Erro ao sair da conta:", error);
     }
   }
   if (state.profile && state.profile.mode === "guest") {
@@ -292,7 +377,11 @@ function hideListStatus() {
 }
 
 function render() {
-  const filtered = filterMovies(state.movies, {
+  // So' fica na grade principal quem ainda nao foi assistido+avaliado; o
+  // resto ("completed") vai pra lista de assistidos no Perfil.
+  const { active, completed } = splitByCompletion(state.movies, state.progress);
+
+  const filtered = filterMovies(active, {
     search: el.searchInput.value,
     year: el.yearFilter.value ? Number(el.yearFilter.value) : null,
     onlyUnwatched: el.onlyUnwatched.checked,
@@ -305,10 +394,26 @@ function render() {
       ? sorted.map((movie) => movieCardHtml(movie)).join("")
       : '<p class="empty-message">Nenhum filme encontrado com esses filtros.</p>';
 
+  renderWatchedList(completed);
+
   const progress = calculateProgress(state.movies, state.progress.watched);
   const avg = averageRating(state.progress.ratings);
   el.progressLabel.textContent =
     avg === null ? formatProgressLabel(progress) : `${formatProgressLabel(progress)} · nota media: ${avg}`;
+}
+
+// Lista de assistidos que aparece no Perfil. Reaproveita o mesmo card da
+// grade principal (poster, estrelas, checkbox), entao continua dando pra
+// mudar a nota ou desmarcar como assistido direto daqui — nesse caso o
+// filme volta pra grade principal no proximo render().
+function renderWatchedList(completed) {
+  if (completed.length === 0) {
+    el.watchedGrid.innerHTML =
+      '<p class="empty-message">Nenhum filme avaliado ainda. Marca como assistido e da uma nota pra ele aparecer aqui.</p>';
+    return;
+  }
+  const sorted = sortMoviesByYear(completed, "desc");
+  el.watchedGrid.innerHTML = sorted.map((movie) => movieCardHtml(movie)).join("");
 }
 
 function applySort(movies, sortKey) {

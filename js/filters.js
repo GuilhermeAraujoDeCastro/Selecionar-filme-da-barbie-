@@ -34,3 +34,26 @@ export function sortMoviesAlphabetically(movies, direction = "asc") {
 export function availableYears(movies) {
   return [...new Set(movies.map((movie) => movie.year))].sort((a, b) => a - b);
 }
+
+// Um filme e' "concluido" quando foi marcado como assistido E ja tem nota.
+// So' assistido (sem nota ainda) continua contando como pendente e fica na
+// grade principal, esperando a nota.
+export function isCompleted(progress, movieId) {
+  return progress.watched.includes(movieId) && Boolean(progress.ratings[movieId]);
+}
+
+// Separa a lista em dois grupos: o que ainda fica na grade principal
+// ("active") e o que ja foi assistido e avaliado, que sai da grade e vai
+// pra lista de assistidos no Perfil ("completed").
+export function splitByCompletion(movies, progress) {
+  const active = [];
+  const completed = [];
+  for (const movie of movies) {
+    if (isCompleted(progress, movie.id)) {
+      completed.push(movie);
+    } else {
+      active.push(movie);
+    }
+  }
+  return { active, completed };
+}

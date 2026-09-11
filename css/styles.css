@@ -10,6 +10,8 @@
   --radius-lg: 20px;
   --shell-width: 480px;
   --nav-height: 68px;
+  --shadow-card: 0 2px 8px rgba(51, 33, 44, 0.08);
+  --transition-fast: 0.15s ease;
 }
 
 * {
@@ -41,6 +43,16 @@ body {
   justify-content: center;
 }
 
+/* Foco visivel (teclado/leitor de tela) com a cor do app em vez do azul
+   padrao do navegador. So aparece com :focus-visible, entao nao muda nada
+   pra quem clica/toca com o mouse ou dedo. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
+}
+
 /* Faixa central com largura de celular: em telas largas o app fica "flutuando"
    no meio da pagina, com cara de tela de app; num celular de verdade o app-shell
    ja ocupa a tela toda, entao a moldura desaparece sozinha. */
@@ -66,6 +78,7 @@ body {
   padding-top: max(1rem, env(safe-area-inset-top));
   background: var(--pink);
   color: white;
+  box-shadow: 0 2px 6px rgba(51, 33, 44, 0.12);
 }
 
 .topbar-icon {
@@ -77,6 +90,7 @@ body {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .app-main {
@@ -108,7 +122,7 @@ body {
 .onboarding {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
 .onboarding-card,
@@ -117,10 +131,12 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.4rem;
+  box-shadow: var(--shadow-card);
 }
 
 .onboarding-card h2 {
   margin-top: 0;
+  font-size: 1.2rem;
   color: var(--pink-dark);
 }
 
@@ -135,13 +151,34 @@ body {
   font-weight: 600;
 }
 
+.email-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.email-actions .btn-primary,
+.email-actions .btn-secondary {
+  width: auto;
+  flex: 1;
+}
+
 input[type="text"],
-input[type="search"] {
+input[type="search"],
+input[type="email"],
+input[type="password"] {
   padding: 0.65rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 1rem;
   min-height: 44px;
+  transition: border-color var(--transition-fast);
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+  border-color: var(--pink);
 }
 
 button {
@@ -159,15 +196,21 @@ button {
   font-weight: 600;
   font-size: 0.95rem;
   width: 100%;
+  transition: background-color var(--transition-fast), transform 0.1s ease;
 }
 
 .btn-primary:hover {
   background: var(--pink-dark);
 }
 
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
 .btn-primary:disabled {
   background: #ccc;
   cursor: not-allowed;
+  transform: none;
 }
 
 .btn-secondary {
@@ -179,10 +222,15 @@ button {
   min-height: 44px;
   cursor: pointer;
   font-weight: 600;
+  transition: background-color var(--transition-fast), transform 0.1s ease;
 }
 
 .btn-secondary:hover {
   background: #ffd0e7;
+}
+
+.btn-secondary:active {
+  transform: scale(0.97);
 }
 
 .error-text {
@@ -211,10 +259,15 @@ button {
   min-width: 44px;
   font-size: 1.15rem;
   cursor: pointer;
+  transition: background-color var(--transition-fast), transform 0.1s ease;
 }
 
 .icon-btn:hover {
   background: var(--pink-light);
+}
+
+.icon-btn:active {
+  transform: scale(0.94);
 }
 
 .field-label {
@@ -273,7 +326,12 @@ button {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 2px 8px rgba(51, 33, 44, 0.08);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.movie-card:active {
+  transform: scale(0.98);
 }
 
 .movie-poster {
@@ -340,6 +398,7 @@ button {
   line-height: 1;
   color: #d8c6d2;
   padding: 0.1rem;
+  transition: color var(--transition-fast), transform 0.1s ease;
 }
 
 .star.filled {
@@ -348,6 +407,10 @@ button {
 
 .star:hover {
   color: var(--pink-dark);
+}
+
+.star:active {
+  transform: scale(1.15);
 }
 
 /* ---------- perfil ---------- */
@@ -384,6 +447,17 @@ button {
   margin: 0 0 0.5rem;
 }
 
+/* ---------- lista de assistidos (dentro do Perfil) ---------- */
+.watched-section {
+  margin-top: 1.5rem;
+}
+
+.watched-section h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+  color: var(--pink-dark);
+}
+
 /* ---------- menu inferior (bottom nav) ---------- */
 .bottom-nav {
   position: sticky;
@@ -408,6 +482,7 @@ button {
   font-weight: 600;
   color: #b191a4;
   cursor: pointer;
+  transition: color var(--transition-fast);
 }
 
 .nav-btn span {
@@ -433,10 +508,15 @@ button {
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(163, 16, 106, 0.4);
   z-index: 15;
+  transition: background-color var(--transition-fast), transform 0.1s ease;
 }
 
 .fab:hover {
   background: var(--pink-dark);
+}
+
+.fab:active {
+  transform: scale(0.94);
 }
 
 /* ---------- painel de filtros (bottom sheet) ---------- */
@@ -457,6 +537,7 @@ button {
   border-radius: 20px 20px 0 0;
   padding: 0.6rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
   z-index: 30;
+  box-shadow: 0 -8px 24px rgba(51, 33, 44, 0.18);
 }
 
 .sheet-handle {

@@ -1,22 +1,21 @@
-// Integracao com Firebase (Authentication com Google + Firestore). Usa o SDK
-// modular do Firebase v9+ direto via CDN (gstatic.com), sem bundler nem
-// "npm install" pra rodar esse site estatico. Versao fixada em 12.18.0
-// (a mais recente no site oficial de release notes do Firebase JS SDK
-// quando esse arquivo foi escrito).
+// Integracao com Firebase (Authentication com Google + email/senha, e
+// Firestore). Usa o SDK modular do Firebase v9+ direto via CDN
+// (gstatic.com), sem bundler nem "npm install" pra rodar esse site
+// estatico. Versao fixada em 12.18.0 (a mais recente no site oficial de
+// release notes do Firebase JS SDK quando esse arquivo foi escrito).
 //
-// Isso aqui e' so uma camada fina em cima do SDK oficial: eu nao consegui
-// testar essas funcoes de verdade porque dependem de um projeto Firebase
-// real (com Google Sign-In e Firestore configurados) e o sandbox onde
-// escrevi esse projeto nao tem acesso a rede pro Firebase. Os outros
-// modulos (progress.js, filters.js, ratings.js, tmdb.js, storage-local.js)
-// tem teste automatizado; esse aqui precisa ser conferido na pratica,
-// depois que voce colar sua config real em js/config.js.
+// Google e email/senha usam o mesmo Firestore (progress/{uid}): o
+// documento e' identificado pelo uid que o Firebase Auth gera pra qualquer
+// provedor, entao loadUserProgress/saveUserProgress nao precisam saber
+// qual login a pessoa usou.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
@@ -37,6 +36,21 @@ export function initFirebase(firebaseConfig) {
 export async function loginWithGoogle(auth) {
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
+  return result.user;
+}
+
+// Cria uma conta nova com email/senha. Se o email ja tiver conta, o
+// Firebase rejeita com o erro "auth/email-already-in-use" (quem chama
+// decide a mensagem pra mostrar, veja emailErrorMessage em main.js).
+export async function signUpWithEmail(auth, email, password) {
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+  return result.user;
+}
+
+// Entra numa conta que ja existe. Senha errada ou email sem conta vira
+// erro ("auth/invalid-credential" nas versoes recentes do SDK).
+export async function loginWithEmail(auth, email, password) {
+  const result = await signInWithEmailAndPassword(auth, email, password);
   return result.user;
 }
 

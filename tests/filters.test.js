@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import {
   availableYears,
   filterMovies,
+  isCompleted,
   sortMoviesAlphabetically,
   sortMoviesByYear,
+  splitByCompletion,
 } from "../js/filters.js";
 
 const MOVIES = [
@@ -59,4 +61,25 @@ test("sortMoviesByYear does not mutate the original array", () => {
 
 test("availableYears returns the distinct years in order", () => {
   assert.deepEqual(availableYears(MOVIES), [2003, 2006, 2024]);
+});
+
+test("isCompleted is true only when watched AND rated", () => {
+  const progress = { watched: [1, 2], ratings: { 1: 5 } };
+  assert.equal(isCompleted(progress, 1), true); // assistido + nota
+  assert.equal(isCompleted(progress, 2), false); // assistido, sem nota
+  assert.equal(isCompleted(progress, 3), false); // nem assistido
+});
+
+test("splitByCompletion separates watched+rated movies from the rest", () => {
+  const progress = { watched: [1, 2], ratings: { 1: 5 } };
+  const { active, completed } = splitByCompletion(MOVIES, progress);
+  assert.deepEqual(completed.map((m) => m.id), [1]);
+  assert.deepEqual(active.map((m) => m.id), [2, 3]);
+});
+
+test("splitByCompletion treats a rating of 0 as not rated", () => {
+  const progress = { watched: [1], ratings: { 1: 0 } };
+  const { active, completed } = splitByCompletion(MOVIES, progress);
+  assert.deepEqual(completed, []);
+  assert.deepEqual(active.map((m) => m.id), [1, 2, 3]);
 });
