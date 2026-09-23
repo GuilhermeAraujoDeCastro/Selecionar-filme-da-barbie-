@@ -1,25 +1,23 @@
-// Passo opcional de build (roda na Vercel, depois do generate-config.js):
-// minifica os arquivos JS e CSS que vao pro navegador (remove comentarios,
-// espacos e da nomes curtos pras variaveis internas de cada funcao), so pra
-// nao deixar o codigo tao confortavel de ler no F12. Isso e so estetica: nao
-// e e nao substitui protecao de verdade, isso ja e feito por outro motivo
-// (a chave da TMDB e o config do Firebase sao publicos por design; nenhum
-// segredo de verdade passa por este arquivo). O codigo-fonte legivel
-// continua normal no repositorio, so a copia publicada fica assim.
-import { readFileSync, writeFileSync } from "node:fs";
+// Passo opcional de build (roda na Vercel, depois do generate-config.js e
+// do mangle-names.js): minifica os arquivos JS e CSS que vao pro navegador
+// (remove comentarios, espacos e da nomes curtos pras variaveis internas de
+// cada funcao), so pra nao deixar o codigo tao confortavel de ler no F12.
+// Isso e so estetica: nao substitui protecao de verdade, isso ja e' feito
+// por outro motivo (a chave da TMDB e o config do Firebase sao publicos por
+// design; nenhum segredo de verdade passa por este arquivo). O
+// codigo-fonte legivel continua normal no repositorio, so a copia
+// publicada fica assim.
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { minify } from "terser";
 import CleanCSS from "clean-css";
 
-const arquivosJs = [
-  "js/main.js",
-  "js/progress.js",
-  "js/filters.js",
-  "js/ratings.js",
-  "js/tmdb.js",
-  "js/storage-local.js",
-  "js/firebase-app.js",
-  "js/config.js",
-];
+// Descobre os arquivos .js sozinho (em vez de lista fixa) pra nao esquecer
+// de atualizar aqui toda vez que um modulo novo entrar em js/. sw.js (na
+// raiz, fora de js/) fica de fora por outro motivo: e' o service worker do
+// PWA, deixado legivel de proposito pra ficar facil depurar cache no F12.
+const arquivosJs = readdirSync("js")
+  .filter((nome) => nome.endsWith(".js") && nome !== "config.example.js")
+  .map((nome) => `js/${nome}`);
 
 const arquivosCss = ["css/styles.css"];
 
@@ -41,7 +39,7 @@ try {
     writeFileSync(caminho, resultado.styles);
   }
 
-  console.log("JS e CSS minificados pra publicacao (so estetico, nao protege nada por si so).");
+  console.log(`JS (${arquivosJs.length} arquivos) e CSS minificados pra publicacao (so estetico, nao protege nada por si so).`);
 } catch (error) {
   console.error("Erro ao minificar:", error);
   process.exit(1);

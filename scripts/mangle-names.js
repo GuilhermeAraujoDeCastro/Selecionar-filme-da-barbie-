@@ -7,99 +7,74 @@
 // continua com os nomes de verdade; so' a copia publicada na Vercel fica
 // assim.
 //
-// So' funciona porque a lista de id/class aqui embaixo e' fixa e conhecida
-// (esse projeto nao gera id/class vindo de fora, tipo de uma API). Se um
-// dia adicionar um id/class novo no HTML/CSS/JS, cadastra ele nas listas
-// ID_NAMES/CLASS_NAMES tambem — senao ele simplesmente nao troca (nao
-// quebra nada, so' fica sem o disfarce).
+// Os nomes sao descobertos sozinhos (varre index.html/css/styles.css/js/*)
+// em vez de manter uma lista fixa a mao - o projeto cresceu bastante desde
+// a 1a versao deste script, e uma lista fixa vivia ficando desatualizada
+// (um id/class novo simplesmente nao era trocado, sem nenhum aviso). Um
+// nome que nao aparecer em nenhum lugar reconhecido aqui embaixo
+// simplesmente fica sem o disfarce (nunca quebra, so' fica menos ofuscado).
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 
-// Ordem alfabetica so' por organizacao; a posicao na lista e' o que decide
-// o nome curto (buildMap), entao mudar a ordem muda os nomes gerados, mas
-// nunca quebra a troca em si.
-const ID_NAMES = [
-  "app-section",
-  "bottom-nav",
-  "config-warning",
-  "email-form",
-  "email-input",
-  "email-login-btn",
-  "email-login-error",
-  "email-signup-btn",
-  "filter-btn",
-  "filter-sheet",
-  "google-login-btn",
-  "google-login-error",
-  "guest-form",
-  "guest-name",
-  "list-status",
-  "logout-btn",
-  "movie-grid",
-  "onboarding",
-  "only-unwatched",
-  "password-input",
-  "profile-name",
-  "progress-label",
-  "refresh-fab",
-  "search-input",
-  "sheet-close",
-  "sheet-overlay",
-  "sort-select",
-  "view-collection",
-  "view-profile",
-  "watched-grid",
-  "year-filter",
-];
+const htmlPath = "index.html";
+const cssPath = "css/styles.css";
+const jsFiles = readdirSync("js")
+  .filter((name) => name.endsWith(".js") && name !== "config.example.js")
+  .map((name) => `js/${name}`);
 
-const CLASS_NAMES = [
-  "active",
-  "app-credit",
-  "app-main",
-  "app-section",
-  "app-shell",
-  "bottom-nav",
-  "btn-primary",
-  "btn-secondary",
-  "checkbox-label",
-  "config-warning",
-  "email-actions",
-  "empty-message",
-  "error-text",
-  "fab",
-  "field-label",
-  "filled",
-  "icon-btn",
-  "list-status",
-  "movie-card",
-  "movie-grid",
-  "movie-info",
-  "movie-poster",
-  "movie-year",
-  "nav-btn",
-  "onboarding",
-  "onboarding-card",
-  "poster-placeholder",
-  "profile-avatar",
-  "profile-card",
-  "progress-label",
-  "search-bar",
-  "sheet",
-  "sheet-handle",
-  "sheet-overlay",
-  "sheet-panel",
-  "star",
-  "stars",
-  "topbar",
-  "topbar-icon",
-  "view",
-  "watched-checkbox",
-  "watched-label",
-  "watched-section",
-];
+const html = readFileSync(htmlPath, "utf8");
+const css = readFileSync(cssPath, "utf8");
+const jsSources = Object.fromEntries(jsFiles.map((path) => [path, readFileSync(path, "utf8")]));
+
+// O unico lugar com classe montada em template literal (a estrela cheia) -
+// tem aspas dentro do ${...}, o que confundiria qualquer regex generica de
+// class="..." (tanto pra descobrir quanto pra trocar). Por isso e' tratado
+// a parte, com um "throw" se o padrao nao bater mais - pra nunca publicar
+// quebrado se esse trecho mudar no futuro sem atualizar aqui tambem.
+const STAR_TEMPLATE = 'class="star${value <= rating ? " filled" : ""}"';
+if (!jsSources["js/main.js"] || !jsSources["js/main.js"].includes(STAR_TEMPLATE)) {
+  throw new Error("mangle-names: padrao da estrela nao encontrado em js/main.js (o arquivo mudou?) — abortando pra nao publicar quebrado.");
+}
+
+// ---------- descoberta dos nomes usados ----------
+
+function collectInto(set, regex, text) {
+  for (const match of text.matchAll(regex)) {
+    set.add(match[1]);
+  }
+}
+
+const idNames = new Set();
+const classNames = new Set(["star", "filled"]); // vem do STAR_TEMPLATE acima, nao de regex
+
+collectInto(idNames, /\bid="([^"]+)"/g, html);
+collectInto(idNames, /\bfor="([^"]+)"/g, html);
+collectInto(idNames, /\baria-controls="([^"]+)"/g, html);
+collectInto(idNames, /\baria-labelledby="([^"]+)"/g, html);
+
+for (const match of html.matchAll(/\bclass="([^"]+)"/g)) {
+  match[1].split(/\s+/).filter(Boolean).forEach((name) => classNames.add(name));
+}
+
+// So' existe seletor por classe nesse projeto (nenhum "#id" no CSS, so'
+// cores hexadecimais tipo #e0218a) - por isso so' varre ".nome". O "." tem
+// que vir seguido de letra, senao pegaria numero decimal tipo "0.15s".
+collectInto(classNames, /\.([a-zA-Z][\w-]*)/g, css);
+
+for (const source of Object.values(jsSources)) {
+  collectInto(idNames, /getElementById\("([^"]+)"\)/g, source);
+  collectInto(classNames, /querySelectorAll\("\.([a-zA-Z][\w-]*)"\)/g, source);
+  collectInto(classNames, /\.matches\("\.([a-zA-Z][\w-]*)"\)/g, source);
+  collectInto(classNames, /\.closest\("\.([a-zA-Z][\w-]*)"\)/g, source);
+  collectInto(classNames, /classList\.(?:add|toggle|remove|contains)\("([a-zA-Z][\w-]*)"/g, source);
+}
+
+// ---------- monta os mapas (nome -> codigo curto) ----------
 
 // Gera "a", "b", ..., "z", "aa", "ab", ... na ordem do indice (mesma logica
-// de nomear coluna de planilha). Curto, sem sentido, nunca repete.
+// de nomear coluna de planilha). Curto, sem sentido, nunca repete. A ordem
+// alfabetica dos nomes so' garante que o resultado seja igual toda vez que
+// o build roda com o mesmo conjunto de nomes.
 function shortCode(index) {
   let n = index;
   let code = "";
@@ -112,14 +87,16 @@ function shortCode(index) {
 
 function buildMap(names) {
   const map = {};
-  names.forEach((name, i) => {
+  [...names].sort().forEach((name, i) => {
     map[name] = shortCode(i);
   });
   return map;
 }
 
-const ID_MAP = buildMap(ID_NAMES);
-const CLASS_MAP = buildMap(CLASS_NAMES);
+const ID_MAP = buildMap(idNames);
+const CLASS_MAP = buildMap(classNames);
+
+// ---------- aplica a troca ----------
 
 // "a b c" -> mapeia cada classe da lista separadamente (um elemento pode
 // ter mais de uma classe) e devolve remontado com espaco.
@@ -133,33 +110,27 @@ function mapClassList(list) {
 
 function mangleHtmlLike(text) {
   return text
-    .replace(/id="([^"]+)"/g, (full, name) => `id="${ID_MAP[name] || name}"`)
-    .replace(/for="([^"]+)"/g, (full, name) => `for="${ID_MAP[name] || name}"`)
-    .replace(/class="([^"]+)"/g, (full, list) => `class="${mapClassList(list)}"`);
+    .replace(/\bid="([^"]+)"/g, (full, name) => `id="${ID_MAP[name] || name}"`)
+    .replace(/\bfor="([^"]+)"/g, (full, name) => `for="${ID_MAP[name] || name}"`)
+    .replace(/\baria-controls="([^"]+)"/g, (full, name) => `aria-controls="${ID_MAP[name] || name}"`)
+    .replace(/\baria-labelledby="([^"]+)"/g, (full, name) => `aria-labelledby="${ID_MAP[name] || name}"`)
+    .replace(/\bclass="([^"]+)"/g, (full, list) => `class="${mapClassList(list)}"`);
 }
 
 function mangleCss(text) {
-  // So' existe seletor por classe nesse projeto (nenhum "#id" no CSS, so'
-  // cores hexadecimais tipo #e0218a) — por isso so' mexe em ".nome".
   return text.replace(/\.([a-zA-Z][\w-]*)/g, (full, name) => `.${CLASS_MAP[name] || name}`);
 }
 
+// getElementById fica de fora aqui de proposito (so' id="..." do HTML
+// estatico e' trocado - um id só criado dentro de um template literal do
+// JS, como o da textarea de resenha, ficaria seguro mas exigiria cuidado
+// extra pra nao confundir com atributos tipo "data-movie-id"; nao vale a
+// pena pra um ganho tao cosmetico).
 function mangleJs(text) {
-  // Unico lugar com classe montada dinamicamente: a estrela cheia. Essa
-  // linha tem aspas dentro do ${...} (o ternario), o que quebraria a regex
-  // generica de class="..." mais abaixo se ela tentasse ler essa linha
-  // tambem — por isso troca essa linha inteira primeiro, por um marcador,
-  // e devolve o valor certo so' no final.
-  const ESTRELA_ANTIGA = 'class="star${value <= rating ? " filled" : ""}"';
-  if (!text.includes(ESTRELA_ANTIGA)) {
-    throw new Error(
-      "mangle-names: padrao da estrela nao encontrado em js/main.js (o arquivo mudou?) — abortando pra nao publicar quebrado.",
-    );
-  }
-  const ESTRELA_NOVA = `class="${CLASS_MAP.star}\${value <= rating ? " ${CLASS_MAP.filled}" : ""}"`;
-  const MARCADOR = "@@MANGLE_STAR@@";
+  const STAR_MARKER = "@@MANGLE_STAR@@";
+  const starReplacement = `class="${CLASS_MAP.star}\${value <= rating ? " ${CLASS_MAP.filled}" : ""}"`;
 
-  let out = text.split(ESTRELA_ANTIGA).join(MARCADOR);
+  let out = text.split(STAR_TEMPLATE).join(STAR_MARKER);
 
   out = out
     .replace(/getElementById\("([^"]+)"\)/g, (full, name) => `getElementById("${ID_MAP[name] || name}")`)
@@ -167,24 +138,23 @@ function mangleJs(text) {
     .replace(/\.matches\("\.([a-zA-Z][\w-]*)"\)/g, (full, name) => `.matches(".${CLASS_MAP[name] || name}")`)
     .replace(/\.closest\("\.([a-zA-Z][\w-]*)"\)/g, (full, name) => `.closest(".${CLASS_MAP[name] || name}")`)
     .replace(
-      /classList\.(add|toggle|remove)\("([a-zA-Z][\w-]*)"/g,
+      /classList\.(add|toggle|remove|contains)\("([a-zA-Z][\w-]*)"/g,
       (full, method, name) => `classList.${method}("${CLASS_MAP[name] || name}"`,
     )
-    .replace(/class="([^"]+)"/g, (full, list) => `class="${mapClassList(list)}"`);
+    .replace(/\bclass="([^"]+)"/g, (full, list) => `class="${mapClassList(list)}"`);
 
-  return out.split(MARCADOR).join(ESTRELA_NOVA);
+  return out.split(STAR_MARKER).join(starReplacement);
 }
 
 try {
-  const htmlPath = "index.html";
-  const cssPath = "css/styles.css";
-  const jsPath = "js/main.js";
-
-  writeFileSync(htmlPath, mangleHtmlLike(readFileSync(htmlPath, "utf8")));
-  writeFileSync(cssPath, mangleCss(readFileSync(cssPath, "utf8")));
-  writeFileSync(jsPath, mangleJs(readFileSync(jsPath, "utf8")));
-
-  console.log("id/class trocados por nomes curtos pra publicacao (so estetico, mesma ideia da minificacao).");
+  writeFileSync(htmlPath, mangleHtmlLike(html));
+  writeFileSync(cssPath, mangleCss(css));
+  for (const path of jsFiles) {
+    writeFileSync(path, mangleJs(jsSources[path]));
+  }
+  console.log(
+    `id/class trocados por nomes curtos em index.html, css/styles.css e ${jsFiles.length} arquivo(s) JS (so' estetico, mesma ideia da minificacao).`,
+  );
 } catch (error) {
   console.error("Erro ao trocar id/class:", error);
   process.exit(1);
