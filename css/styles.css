@@ -1,17 +1,40 @@
 :root {
+  color-scheme: light dark;
   --pink: #e0218a;
   --pink-light: #ffe0f0;
   --pink-dark: #a3106a;
+  --gold: #f2a900;
   --text: #33212c;
   --border: #f3c6df;
   --bg: #fff6fb;
-  --bg-outer: #ece3e8;
+  --bg-outer: #f6e9f0;
+  --surface: #ffffff;
+  --ink: #33212c;
+  --accent: #886b7c;
+  --star-empty: #d8c6d2;
   --radius: 10px;
   --radius-lg: 20px;
   --shell-width: 480px;
   --nav-height: 68px;
   --shadow-card: 0 2px 8px rgba(51, 33, 44, 0.08);
   --transition-fast: 0.15s ease;
+  --sheet-transition-ms: 240ms;
+}
+
+/* Tema escuro: so' as variaveis de superficie/texto trocam. --pink/--gold
+   ficam fixas de proposito (sao a marca do app). Aplicado via atributo
+   setado por um script inline no <head> antes da 1a pintura, pra nao
+   piscar claro->escuro (veja index.html). */
+:root[data-theme="dark"] {
+  --pink-light: #3a1f30;
+  --border: #4a2c3d;
+  --text: #f5e6ef;
+  --bg: #201420;
+  --bg-outer: #120c12;
+  --surface: #2b1a29;
+  --ink: #f5e6ef;
+  --accent: #c9a3ba;
+  --star-empty: #4a3542;
 }
 
 * {
@@ -33,11 +56,17 @@ html {
   height: 100%;
 }
 
+/* Fundo com um padrao sutil de estrela (identidade da marca), bem baixa
+   opacidade pra nao brigar com o conteudo - mesma ideia do projeto-irmao
+   Pokemon Games Tracker, so' que com o motivo da Barbie em vez do Poke Bola. */
 body {
   margin: 0;
   min-height: 100%;
   font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg-outer);
+  background-color: var(--bg-outer);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cpath d='M30 8l3.5 9.5 10 1.3-7.4 7 2 9.9-8.1-4.9-8.1 4.9 2-9.9-7.4-7 10-1.3z' fill='none' stroke='%23E0218A' stroke-width='1' opacity='0.07'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 60px 60px;
   color: var(--text);
   display: flex;
   justify-content: center;
@@ -48,14 +77,18 @@ body {
    pra quem clica/toca com o mouse ou dedo. */
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
   outline: 2px solid var(--pink);
   outline-offset: 2px;
 }
 
 /* Faixa central com largura de celular: em telas largas o app fica "flutuando"
    no meio da pagina, com cara de tela de app; num celular de verdade o app-shell
-   ja ocupa a tela toda, entao a moldura desaparece sozinha. */
+   ja ocupa a tela toda, entao a moldura desaparece sozinha. Acima de 720px a
+   faixa alarga e o .movie-grid (abaixo, auto-fill) sozinho reflui em mais
+   colunas - nao precisa de regra especial pra grade aqui. */
 .app-shell {
   width: 100%;
   max-width: var(--shell-width);
@@ -67,11 +100,31 @@ select:focus-visible {
   box-shadow: 0 0 0 1px rgba(51, 33, 44, 0.05), 0 24px 60px rgba(51, 33, 44, 0.14);
 }
 
+@media (min-width: 720px) {
+  body {
+    padding: 2rem 1rem;
+  }
+
+  .app-shell {
+    max-width: 800px;
+    min-height: min(92vh, 860px);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 1200px) {
+  .app-shell {
+    max-width: 1080px;
+  }
+}
+
 .topbar {
   position: sticky;
   top: 0;
   z-index: 20;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.6rem;
   padding: 1rem 1.25rem;
@@ -91,6 +144,28 @@ select:focus-visible {
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.theme-toggle-btn {
+  justify-self: end;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  color: white;
+  font-size: 1.05rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast);
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .app-main {
@@ -100,7 +175,7 @@ select:focus-visible {
 
 .app-credit {
   text-align: center;
-  color: #886b7c;
+  color: var(--accent);
   font-size: 0.8rem;
   margin: 1.5rem 0 0;
 }
@@ -111,6 +186,7 @@ select:focus-visible {
   border-radius: var(--radius);
   padding: 0.9rem 1.1rem;
   margin-bottom: 1.25rem;
+  color: #4a3a10;
 }
 
 .config-warning code {
@@ -119,15 +195,50 @@ select:focus-visible {
   border-radius: 4px;
 }
 
+/* Banner curto de primeira visita (item "onboarding"): so' aparece uma vez
+   (localStorage), reforca a diferenca entre visitante/Google/e-mail sem
+   virar um tour passo-a-passo pesado pra uma tela de so' 3 cards. */
+.tour-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  background: var(--pink-light);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.1rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.tour-banner button {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--pink);
+  color: var(--pink-dark);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .onboarding {
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
 }
 
+@media (min-width: 720px) {
+  .onboarding {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
 .onboarding-card,
 .profile-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.4rem;
@@ -165,20 +276,30 @@ select:focus-visible {
 input[type="text"],
 input[type="search"],
 input[type="email"],
-input[type="password"] {
+input[type="password"],
+textarea {
   padding: 0.65rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 1rem;
   min-height: 44px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
   transition: border-color var(--transition-fast);
 }
 
 input[type="text"]:focus,
 input[type="search"]:focus,
 input[type="email"]:focus,
-input[type="password"]:focus {
+input[type="password"]:focus,
+textarea:focus {
   border-color: var(--pink);
+}
+
+textarea {
+  min-height: 90px;
+  resize: vertical;
 }
 
 button {
@@ -222,21 +343,31 @@ button {
   min-height: 44px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.85rem;
   transition: background-color var(--transition-fast), transform 0.1s ease;
 }
 
 .btn-secondary:hover {
-  background: #ffd0e7;
+  background: var(--border);
 }
 
 .btn-secondary:active {
   transform: scale(0.97);
 }
 
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .error-text {
-  color: #b3261e;
+  color: #ff6f91;
   font-size: 0.85rem;
   margin: 0;
+}
+
+:root:not([data-theme="dark"]) .error-text {
+  color: #b3261e;
 }
 
 /* ---------- busca + filtros ---------- */
@@ -244,6 +375,11 @@ button {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding-bottom: 0.5rem;
+  z-index: 5;
 }
 
 .search-bar input {
@@ -251,7 +387,7 @@ button {
 }
 
 .icon-btn {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   width: 44px;
@@ -259,6 +395,7 @@ button {
   min-width: 44px;
   font-size: 1.15rem;
   cursor: pointer;
+  color: var(--ink);
   transition: background-color var(--transition-fast), transform 0.1s ease;
 }
 
@@ -285,6 +422,8 @@ button {
   border-radius: var(--radius);
   font-size: 0.95rem;
   min-height: 44px;
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .checkbox-label {
@@ -305,29 +444,67 @@ button {
   font-style: italic;
 }
 
+:root[data-theme="dark"] .list-status {
+  color: var(--accent);
+}
+
+/* ---------- link publico somente-leitura (?share=uid) ---------- */
+.share-banner {
+  background: var(--pink-light);
+  color: var(--ink);
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius);
+  margin: 0 0 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* Visualizacao somente-leitura: estrelas/checkbox/textarea continuam
+   visiveis mas nao reagem a clique (o handler em JS ja bloqueia, isso e'
+   so' o visual pra deixar claro que nao da pra editar). */
+.read-only .stars,
+.read-only .watched-checkbox,
+.read-only .review-field {
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.read-only .profile-actions .btn-secondary[data-owner-only] {
+  display: none;
+}
+
 /* ---------- grade de filmes ---------- */
 .movie-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 0.9rem;
 }
 
 .empty-message {
   grid-column: 1 / -1;
   text-align: center;
-  color: #77677a;
+  color: var(--accent);
   padding: 2rem 0;
 }
 
 .movie-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-card);
+  cursor: pointer;
   transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.movie-card:hover {
+  box-shadow: 0 8px 20px rgba(51, 33, 44, 0.16);
+  transform: translateY(-2px);
 }
 
 .movie-card:active {
@@ -373,9 +550,22 @@ button {
 }
 
 .movie-year {
-  color: #886b7c;
+  color: var(--accent);
   font-weight: 400;
   font-size: 0.8rem;
+}
+
+.badge-upcoming {
+  display: block;
+  clear: both;
+  align-self: flex-start;
+  background: var(--pink-light);
+  color: var(--pink-dark);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  width: fit-content;
 }
 
 .watched-label {
@@ -383,6 +573,10 @@ button {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.82rem;
+  /* Sem isso, quando a ficha do filme (.detail-poster, flutuante) ainda
+     nao tem elenco (antes da TMDB responder) o checkbox "Assistido"
+     ficava flutuando do lado do poster em vez de abaixo dele. */
+  clear: both;
 }
 
 .stars {
@@ -396,13 +590,13 @@ button {
   cursor: pointer;
   font-size: 1.2rem;
   line-height: 1;
-  color: #d8c6d2;
+  color: var(--star-empty);
   padding: 0.1rem;
   transition: color var(--transition-fast), transform 0.1s ease;
 }
 
 .star.filled {
-  color: #f2a900;
+  color: var(--gold);
 }
 
 .star:hover {
@@ -411,6 +605,43 @@ button {
 
 .star:active {
   transform: scale(1.15);
+}
+
+/* ---------- skeleton loading (enquanto a TMDB nao responde) ---------- */
+.skeleton-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-cover {
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius);
+}
+
+.skeleton-cover,
+.skeleton-line {
+  background: linear-gradient(90deg, var(--border) 25%, var(--pink-light) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-line {
+  height: 0.7rem;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ---------- perfil ---------- */
@@ -442,9 +673,41 @@ button {
 }
 
 .progress-label {
-  color: #886b7c;
+  color: var(--accent);
   font-size: 0.9rem;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.3rem;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+/* ---------- comparar colecoes (item 12) ---------- */
+.compare-section {
+  margin-top: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.compare-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.compare-form input {
+  flex: 1;
+}
+
+.compare-result {
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
 }
 
 /* ---------- lista de assistidos (dentro do Perfil) ---------- */
@@ -452,19 +715,86 @@ button {
   margin-top: 1.5rem;
 }
 
-.watched-section h3 {
+.watched-section h3,
+.section-title {
   margin: 0 0 0.8rem;
   font-size: 1rem;
   color: var(--pink-dark);
 }
 
-/* ---------- menu inferior (bottom nav) ---------- */
+/* ---------- estatisticas do perfil (item 11) ---------- */
+.stats-section {
+  margin-top: 1.5rem;
+}
+
+.section-title {
+  margin-top: 1.25rem;
+}
+
+.ranking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ranking-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.ranking-item .ranking-rating {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.stat-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.stat-bar-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.stat-bar-track {
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 10px;
+}
+
+.stat-bar-fill {
+  background: var(--pink);
+  height: 100%;
+}
+
+.stat-note {
+  color: var(--accent);
+  font-size: 0.85rem;
+  margin: 0.6rem 0 0;
+}
+
+/* ---------- menu inferior (bottom nav / tablist) ---------- */
 .bottom-nav {
   position: sticky;
   bottom: 0;
   z-index: 20;
   display: flex;
-  background: white;
+  background: var(--surface);
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -480,7 +810,7 @@ button {
   padding: 0.6rem 0.4rem 0.55rem;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #b191a4;
+  color: var(--accent);
   cursor: pointer;
   transition: color var(--transition-fast);
 }
@@ -493,51 +823,67 @@ button {
   color: var(--pink-dark);
 }
 
-/* ---------- botao flutuante (FAB) ---------- */
+/* ---------- botao flutuante (FAB), badge de dois tons ---------- */
 .fab {
   position: fixed;
   bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
   right: max(16px, calc(50vw - (var(--shell-width) / 2) + 16px));
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  border: none;
-  background: var(--pink);
-  color: white;
+  border: 2px solid var(--pink-dark);
+  background: linear-gradient(to bottom, var(--pink) 0%, var(--pink) 46%, var(--pink-dark) 46%, var(--pink-dark) 54%, white 54%, white 100%);
+  color: var(--pink-dark);
   font-size: 1.3rem;
+  font-weight: 700;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(163, 16, 106, 0.4);
   z-index: 15;
-  transition: background-color var(--transition-fast), transform 0.1s ease;
+  transition: transform 0.15s ease;
 }
 
 .fab:hover {
-  background: var(--pink-dark);
+  transform: scale(1.05);
 }
 
 .fab:active {
   transform: scale(0.94);
 }
 
-/* ---------- painel de filtros (bottom sheet) ---------- */
+/* ---------- painel deslizante (filtros + ficha do filme) ---------- */
 .sheet-overlay {
   position: fixed;
   inset: 0;
   background: rgba(51, 33, 44, 0.35);
   z-index: 29;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--sheet-transition-ms) ease;
+}
+
+.sheet.open .sheet-overlay {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .sheet-panel {
   position: fixed;
   left: 50%;
   bottom: 0;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(100%);
   width: min(100%, var(--shell-width));
-  background: white;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--surface);
   border-radius: 20px 20px 0 0;
   padding: 0.6rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
   z-index: 30;
   box-shadow: 0 -8px 24px rgba(51, 33, 44, 0.18);
+  transition: transform var(--sheet-transition-ms) ease;
+}
+
+.sheet.open .sheet-panel {
+  transform: translateX(-50%) translateY(0);
 }
 
 .sheet-handle {
@@ -551,4 +897,49 @@ button {
 .sheet-panel h3 {
   margin: 0 0 1rem;
   color: var(--pink-dark);
+}
+
+/* ---------- ficha do filme (item 2/4) ---------- */
+.detail-poster {
+  width: 120px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--radius);
+  float: left;
+  margin: 0 0.9rem 0.6rem 0;
+}
+
+.detail-meta {
+  color: var(--accent);
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+}
+
+.detail-overview {
+  margin: 0 0 0.8rem;
+  line-height: 1.5;
+}
+
+.detail-cast {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+  clear: both;
+}
+
+.review-field label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.review-field textarea {
+  width: 100%;
+}
+
+.review-hint {
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin: 0.3rem 0 0;
 }
