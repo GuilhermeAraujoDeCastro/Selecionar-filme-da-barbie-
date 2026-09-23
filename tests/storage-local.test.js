@@ -7,6 +7,7 @@ import {
   saveLastGuestName,
   saveLocalProgress,
   setRating,
+  setReview,
   toggleWatched,
 } from "../js/storage-local.js";
 
@@ -34,11 +35,11 @@ beforeEach(() => {
 
 test("loadLocalProgress with nothing saved returns an empty progress", () => {
   const progress = loadLocalProgress("Ana");
-  assert.deepEqual(progress, { watched: [], ratings: {} });
+  assert.deepEqual(progress, { watched: [], ratings: {}, reviews: {} });
 });
 
 test("saveLocalProgress then loadLocalProgress round-trips correctly", () => {
-  const progress = { watched: [1, 2], ratings: { 1: 5 } };
+  const progress = { watched: [1, 2], ratings: { 1: 5 }, reviews: { 1: "Adorei" } };
   saveLocalProgress("Ana", progress);
   assert.deepEqual(loadLocalProgress("Ana"), progress);
 });
@@ -52,7 +53,7 @@ test("different profile names do not share progress", () => {
 
 test("loadLocalProgress recovers from corrupted JSON instead of throwing", () => {
   globalThis.localStorage.setItem("barbie-tracker:Ana", "{isso nao e json valido");
-  assert.deepEqual(loadLocalProgress("Ana"), { watched: [], ratings: {} });
+  assert.deepEqual(loadLocalProgress("Ana"), { watched: [], ratings: {}, reviews: {} });
 });
 
 test("toggleWatched adds an id that is not there yet", () => {
@@ -77,6 +78,18 @@ test("setRating adds a rating without touching the others", () => {
   const progress = { watched: [], ratings: { 1: 5 } };
   const result = setRating(progress, 2, 3);
   assert.deepEqual(result.ratings, { 1: 5, 2: 3 });
+});
+
+test("setReview adds a review without touching the others", () => {
+  const progress = { watched: [], ratings: {}, reviews: { 1: "Bom" } };
+  const result = setReview(progress, 2, "Otimo");
+  assert.deepEqual(result.reviews, { 1: "Bom", 2: "Otimo" });
+});
+
+test("setReview does not mutate the original object", () => {
+  const progress = { watched: [], ratings: {}, reviews: {} };
+  setReview(progress, 1, "Otimo");
+  assert.deepEqual(progress.reviews, {});
 });
 
 test("loadLastGuestName with nothing saved returns null", () => {

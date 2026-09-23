@@ -4,9 +4,12 @@ import {
   availableYears,
   filterMovies,
   isCompleted,
+  isMovieUpcoming,
   sortMoviesAlphabetically,
+  sortMoviesByRating,
   sortMoviesByYear,
   splitByCompletion,
+  splitUpcoming,
 } from "../js/filters.js";
 
 const MOVIES = [
@@ -82,4 +85,48 @@ test("splitByCompletion treats a rating of 0 as not rated", () => {
   const { active, completed } = splitByCompletion(MOVIES, progress);
   assert.deepEqual(completed, []);
   assert.deepEqual(active.map((m) => m.id), [1, 2, 3]);
+});
+
+test("sortMoviesByRating puts the highest rated first by default", () => {
+  const result = sortMoviesByRating(MOVIES, { 1: 3, 2: 5, 3: 1 });
+  assert.deepEqual(result.map((m) => m.id), [2, 1, 3]);
+});
+
+test("sortMoviesByRating treats missing ratings as 0, always last when descending", () => {
+  const result = sortMoviesByRating(MOVIES, { 2: 4 });
+  assert.deepEqual(result.map((m) => m.id)[0], 2);
+});
+
+test("sortMoviesByRating ascending puts the lowest rated first", () => {
+  const result = sortMoviesByRating(MOVIES, { 1: 3, 2: 5, 3: 1 }, "asc");
+  assert.deepEqual(result.map((m) => m.id), [3, 1, 2]);
+});
+
+test("splitUpcoming keeps a movie released today or earlier in 'released'", () => {
+  const movies = [{ id: 1, releaseDate: "2024-01-01" }];
+  const { released, upcoming } = splitUpcoming(movies, new Date("2024-01-01T12:00:00Z"));
+  assert.deepEqual(released.map((m) => m.id), [1]);
+  assert.deepEqual(upcoming, []);
+});
+
+test("splitUpcoming moves a future release date to 'upcoming'", () => {
+  const movies = [{ id: 1, releaseDate: "2030-01-01" }];
+  const { released, upcoming } = splitUpcoming(movies, new Date("2024-01-01T12:00:00Z"));
+  assert.deepEqual(released, []);
+  assert.deepEqual(upcoming.map((m) => m.id), [1]);
+});
+
+test("isMovieUpcoming is true only for a releaseDate strictly after today", () => {
+  const now = new Date("2024-06-15T12:00:00Z");
+  assert.equal(isMovieUpcoming({ releaseDate: "2024-06-16" }, now), true);
+  assert.equal(isMovieUpcoming({ releaseDate: "2024-06-15" }, now), false);
+  assert.equal(isMovieUpcoming({ releaseDate: "2024-06-14" }, now), false);
+  assert.equal(isMovieUpcoming({}, now), false);
+});
+
+test("splitUpcoming treats a movie without releaseDate as released", () => {
+  const movies = [{ id: 1 }];
+  const { released, upcoming } = splitUpcoming(movies, new Date("2024-01-01T12:00:00Z"));
+  assert.deepEqual(released.map((m) => m.id), [1]);
+  assert.deepEqual(upcoming, []);
 });

@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm test
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  # Roda o build de producao (gera config, troca id/class, minifica) com
+  # variaveis de ambiente falsas, so' pra pegar erro de sintaxe/regex do
+  # pipeline (scripts/*.js) antes da Vercel tentar publicar de verdade - o
+  # Pokemon Games Tracker (projeto-irmao) ainda nao tem esse job.
+  build-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: cp js/config.example.js js/config.js
+      - run: npm run build
+        env:
+          TMDB_API_KEY: build-check
+          FIREBASE_API_KEY: build-check
+          FIREBASE_AUTH_DOMAIN: build-check
+          FIREBASE_PROJECT_ID: build-check
+          FIREBASE_STORAGE_BUCKET: build-check
+          FIREBASE_MESSAGING_SENDER_ID: build-check
+          FIREBASE_APP_ID: build-check
+      - run: node --check js/main.js
