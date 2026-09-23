@@ -5,11 +5,19 @@
   "type": "module",
   "description": "Tracker dos filmes da Barbie, com progresso, notas e dados via TMDB.",
   "scripts": {
+    "dev": "node scripts/dev-static-server.js",
     "test": "node --test",
+    "test:e2e": "playwright test",
     "build": "node scripts/generate-config.js && node scripts/mangle-names.js && node scripts/minify.js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "clean-css": "^5.3.3",
     "terser": "^5.51.2"
+  },
+  "dependencies": {
+    "@sentry/node": "^10.75.0",
+    "firebase-admin": "^13.0.0",
+    "web-push": "^3.6.7"
   }
 }

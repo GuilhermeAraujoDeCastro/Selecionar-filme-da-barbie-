@@ -31,6 +31,13 @@ export function sortMoviesAlphabetically(movies, direction = "asc") {
   return direction === "desc" ? sorted.reverse() : sorted;
 }
 
+// Sem nota vira 0 pra ficar sempre por ultimo, tanto em "maior primeiro"
+// quanto (depois do reverse) em "menor primeiro".
+export function sortMoviesByRating(movies, ratings, direction = "desc") {
+  const sorted = [...movies].sort((a, b) => (ratings[a.id] || 0) - (ratings[b.id] || 0));
+  return direction === "desc" ? sorted.reverse() : sorted;
+}
+
 export function availableYears(movies) {
   return [...new Set(movies.map((movie) => movie.year))].sort((a, b) => a - b);
 }
@@ -56,4 +63,25 @@ export function splitByCompletion(movies, progress) {
     }
   }
   return { active, completed };
+}
+
+// A TMDB inclui filme anunciado mas ainda sem estrear (releaseDate no
+// futuro) - sem isso ele contava contra o progresso como se a pessoa
+// tivesse "deixado de assistir" um filme que nem lancou ainda. now e'
+// parametro so' pra dar pra testar sem depender da data real do sistema.
+export function isMovieUpcoming(movie, now = new Date()) {
+  const today = now.toISOString().slice(0, 10);
+  return Boolean(movie.releaseDate) && movie.releaseDate > today;
+}
+
+// Separa em "ja lancado" e "em breve" usando isMovieUpcoming acima -
+// usado tanto na grade principal (so' mostra "em breve" numa secao a
+// parte) quanto na ficha do filme (esconde os controles de nota/assistido).
+export function splitUpcoming(movies, now = new Date()) {
+  const released = [];
+  const upcoming = [];
+  for (const movie of movies) {
+    (isMovieUpcoming(movie, now) ? upcoming : released).push(movie);
+  }
+  return { released, upcoming };
 }

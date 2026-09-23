@@ -6,7 +6,7 @@ const KEY_PREFIX = "barbie-tracker:";
 const LAST_GUEST_KEY = "barbie-tracker:last-guest";
 
 function emptyProgress() {
-  return { watched: [], ratings: {} };
+  return { watched: [], ratings: {}, reviews: {} };
 }
 
 export function loadLocalProgress(profileName) {
@@ -19,6 +19,7 @@ export function loadLocalProgress(profileName) {
     return {
       watched: Array.isArray(parsed.watched) ? parsed.watched : [],
       ratings: typeof parsed.ratings === "object" && parsed.ratings !== null ? parsed.ratings : {},
+      reviews: typeof parsed.reviews === "object" && parsed.reviews !== null ? parsed.reviews : {},
     };
   } catch {
     return emptyProgress();
@@ -41,6 +42,12 @@ export function toggleWatched(progress, movieId) {
 
 export function setRating(progress, movieId, rating) {
   return { ...progress, ratings: { ...progress.ratings, [movieId]: rating } };
+}
+
+// text vazia ("") fica salva mesmo assim - e' o jeito de "apagar" a
+// resenha sem tirar o filme da lista de assistidos.
+export function setReview(progress, movieId, text) {
+  return { ...progress, reviews: { ...progress.reviews, [movieId]: text } };
 }
 
 // Guarda so' o nome do ultimo visitante que entrou, pra reabrir a sessao

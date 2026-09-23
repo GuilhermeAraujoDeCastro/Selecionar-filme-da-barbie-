@@ -65,11 +65,15 @@ export function watchAuthState(auth, callback) {
 }
 
 function emptyProgress() {
-  return { watched: [], ratings: {} };
+  return { watched: [], ratings: {}, reviews: {} };
 }
 
-// Mesma forma de progresso usada em storage-local.js ({watched, ratings}),
-// so que lendo de "progress/{userId}" no Firestore em vez do localStorage.
+// Mesma forma de progresso usada em storage-local.js ({watched, ratings,
+// reviews}), so que lendo de "progress/{userId}" no Firestore em vez do
+// localStorage. Um doc so' por usuario (nao uma subcolecao por filme): a
+// colecao inteira cabe tranquilo num doc so' (~40 filmes), e mantem o link
+// publico somente-leitura simples (so precisa de "get", nunca de "list" -
+// veja firestore.rules).
 export async function loadUserProgress(db, userId) {
   const ref = doc(db, "progress", userId);
   const snapshot = await getDoc(ref);
@@ -80,10 +84,19 @@ export async function loadUserProgress(db, userId) {
   return {
     watched: Array.isArray(data.watched) ? data.watched : [],
     ratings: data.ratings && typeof data.ratings === "object" ? data.ratings : {},
+    reviews: data.reviews && typeof data.reviews === "object" ? data.reviews : {},
   };
 }
 
 export async function saveUserProgress(db, userId, progress) {
   const ref = doc(db, "progress", userId);
   await setDoc(ref, progress);
+}
+
+// Guarda a inscricao de push do navegador (item 13) num doc separado de
+// progress/{userId} - so' a function da Vercel (api/notify-new-movies.js)
+// le essa colecao, nunca o app na hora normal de uso.
+export async function savePushSubscription(db, userId, subscriptionJson) {
+  const ref = doc(db, "pushSubscriptions", userId);
+  await setDoc(ref, { subscription: subscriptionJson, savedAt: Date.now() });
 }

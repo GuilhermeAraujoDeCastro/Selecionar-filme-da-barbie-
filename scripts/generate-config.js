@@ -35,6 +35,12 @@ export const FIREBASE_CONFIG = {
   messagingSenderId: ${JSON.stringify(process.env.FIREBASE_MESSAGING_SENDER_ID || "")},
   appId: ${JSON.stringify(process.env.FIREBASE_APP_ID || "")},
 };
+
+// Ambos opcionais - string vazia desativa, sem precisar de nenhuma conta
+// pro resto do site funcionar (veja js/config.example.js).
+export const SENTRY_DSN = ${JSON.stringify(process.env.SENTRY_DSN || "")};
+
+export const VAPID_PUBLIC_KEY = ${JSON.stringify(process.env.VAPID_PUBLIC_KEY || "")};
 `;
 
 writeFileSync(new URL("../js/config.js", import.meta.url), conteudo);

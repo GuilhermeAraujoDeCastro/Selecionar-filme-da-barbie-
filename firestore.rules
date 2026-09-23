@@ -1,0 +1,29 @@
+// Regras do Firestore pra este projeto - NAO sao aplicadas automaticamente
+// por nada neste repositorio (nao ha deploy automatizado de regras aqui).
+// Cole isto manualmente no Firebase Console (Build > Firestore Database >
+// Regras) do projeto configurado em js/config.js (FIREBASE_CONFIG).
+//
+// progress/{userId}: um doc so' por usuario, com {watched, ratings,
+// reviews}. "get" publico (nao "list") viabiliza o link "?share=uid"
+// (js/main.js) sem dar pra listar/descobrir todos os usuarios - so' quem
+// ja sabe o uid exato (recebeu o link) consegue ler. Escrita continua so'
+// do dono.
+//
+// pushSubscriptions/{userId}: inscricao de push do navegador (item 13).
+// So' o dono le/escreve a propria; a function que manda a notificacao
+// (api/notify-new-movies.js) usa o Admin SDK, que ignora essas regras.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /progress/{userId} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /pushSubscriptions/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
