@@ -1,11 +1,7 @@
-// Service worker do PWA: cache-first so' do "app shell" (HTML/CSS/JS/
-// manifest/icones deste mesmo site), pra abrir offline/instalado. NUNCA
-// intercepta a API da TMDB nem do Firebase - senao a lista de filmes ou o
-// login ficariam presos em cache velho. Fica de fora da minificacao
-// (scripts/minify.js) de proposito, pra ficar facil de depurar problema de
-// cache direto no F12.
+// Service worker do PWA: guarda o app pra abrir offline. Nunca mexe na TMDB nem no Firebase.
 
-const CACHE_NAME = "barbie-movies-tracker-shell-v1";
+// O build (scripts/minify.js) troca __BUILD_ID__ por um id novo a cada deploy.
+const CACHE_NAME = "barbie-movies-tracker-__BUILD_ID__";
 
 const APP_SHELL_FILES = [
   "index.html",
@@ -30,8 +26,7 @@ const APP_SHELL_FILES = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // cache.add() individual (nao cache.addAll) pra um arquivo faltando
-      // (ex.: js/config.js no modo visitante) nao derrubar a instalacao inteira.
+      // Um por um: arquivo faltando (ex.: js/config.js) nao derruba a instalacao.
       await Promise.all(APP_SHELL_FILES.map((url) => cache.add(url).catch(() => {})));
     }),
   );
@@ -47,16 +42,28 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Rede primeiro (deploy novo aparece na hora); o cache so entra quando estiver offline.
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
+  if (event.request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
     return;
   }
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(() =>
+        caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || caches.match("index.html")),
+      ),
+  );
 });
 
-// Notificacao de filme novo (item 13): a function da Vercel
-// (api/notify-new-movies.js) manda um push com {title, body, url}.
+// Push de filme novo mandado por api/notify-new-movies.js ({title, body, url}).
 self.addEventListener("push", (event) => {
   if (!event.data) {
     return;

@@ -1,23 +1,14 @@
 import { test, expect } from "@playwright/test";
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 
-// TMDB de verdade nunca e' chamada nesse teste (routes mockadas abaixo) - o
-// objetivo aqui e' testar o app, nao a TMDB. js/config.js fica de fora do
-// git (.gitignore) e normalmente so' existe depois de rodar o build ou de
-// copiar config.example.js a mao - aqui geramos um com uma chave falsa so'
-// pra passar a checagem de "TMDB_API_KEY configurada"; o valor nunca e'
-// usado de verdade, ja que toda chamada a api.themoviedb.org e' interceptada.
-writeFileSync(
-  join(import.meta.dirname, "..", "js", "config.js"),
-  [
-    'export const TMDB_API_KEY = "chave-de-teste";',
-    "export const FIREBASE_CONFIG = null;",
-    'export const SENTRY_DSN = "";',
-    'export const VAPID_PUBLIC_KEY = "";',
-    "",
-  ].join("\n"),
-);
+// A TMDB de verdade nunca e' chamada: config.js e a API sao interceptados na rede.
+// Nada e' gravado em disco, entao o js/config.js local de quem roda o teste fica intacto.
+const FAKE_CONFIG = [
+  'export const TMDB_API_KEY = "chave-de-teste";',
+  "export const FIREBASE_CONFIG = null;",
+  'export const SENTRY_DSN = "";',
+  'export const VAPID_PUBLIC_KEY = "";',
+  "",
+].join("\n");
 
 const MOCK_MOVIES = [
   {
@@ -26,11 +17,19 @@ const MOCK_MOVIES = [
     release_date: "2002-10-08",
     poster_path: null,
     overview: "Uma Barbie presa numa torre, sonhando em ver o mundo.",
-    genre_ids: [],
+    genre_ids: [16, 10751],
+    original_language: "en",
+    vote_count: 1296,
   },
 ];
 
 async function mockTmdb(page) {
+  await page.route("**/js/config.js", (route) =>
+    route.fulfill({ status: 200, contentType: "text/javascript", body: FAKE_CONFIG }),
+  );
+  await page.route("**/3/discover/movie**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ results: [], total_pages: 1 }) }),
+  );
   await page.route("**/3/search/movie**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ results: MOCK_MOVIES, total_pages: 1 }) }),
   );
@@ -95,4 +94,31 @@ test("abrir a ficha do filme mostra a sinopse e guarda a resenha", async ({ page
 
   await page.locator("#movie-grid .movie-card h3").first().click();
   await expect(page.locator("#review-textarea")).toHaveValue("Adorei esse classico!");
+});
+
+test("card focado abre a ficha com Enter e Esc fecha", async ({ page }) => {
+  await mockTmdb(page);
+  await page.goto("/");
+  await page.getByPlaceholder("Ex: Ana").fill("Teresa");
+  await page.locator("#guest-form button[type=submit]").click();
+
+  const card = page.locator("#movie-grid .movie-card").first();
+  await card.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Detalhes do filme" })).toBeVisible();
+  await expect(page.locator("#detail-close-btn")).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Detalhes do filme" })).toBeHidden();
+});
+
+test("sair da conta volta pra tela inicial em vez de entrar num visitante salvo", async ({ page }) => {
+  await mockTmdb(page);
+  await page.goto("/");
+  await page.getByPlaceholder("Ex: Ana").fill("Chelsea");
+  await page.locator("#guest-form button[type=submit]").click();
+  await page.locator('.nav-btn[data-view="profile"]').click();
+  await page.locator("#logout-btn").click();
+  await page.reload();
+  await expect(page.locator("#onboarding")).toBeVisible();
 });

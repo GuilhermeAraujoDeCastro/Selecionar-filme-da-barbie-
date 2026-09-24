@@ -39,7 +39,7 @@ import { debounce } from "./debounce.js";
 // v2: o filme em cache ganhou releaseDate/genres - muda a chave pra quem
 // tinha cache antigo buscar de novo em vez de ficar sem essa informacao
 // ate clicar em atualizar.
-const MOVIES_CACHE_KEY = "barbie-tracker:movies-cache:v2";
+const MOVIES_CACHE_KEY = "barbie-tracker:movies-cache:v3";
 const MOVIES_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DETAIL_CACHE_KEY = "barbie-tracker:detail-cache";
 const DETAIL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -119,6 +119,9 @@ const state = {
   detailMovieId: null,
 };
 
+// Link publico (?share=uid) tem prioridade sobre qualquer login automatico.
+const SHARED_UID = new URLSearchParams(window.location.search).get("share");
+
 let appConfig = null;
 let firebaseModule = null;
 let firebaseRefs = null; // { app, auth, db }
@@ -169,9 +172,10 @@ async function init() {
   el.onlyUnwatched.addEventListener("change", render);
   el.sortSelect.addEventListener("change", render);
   el.refreshFab.addEventListener("click", () => loadMovies({ forceRefresh: true }));
-  el.movieGrid.addEventListener("click", handleGridClick);
-  el.watchedGrid.addEventListener("click", handleGridClick);
-  el.upcomingGrid.addEventListener("click", handleGridClick);
+  [el.movieGrid, el.watchedGrid, el.upcomingGrid].forEach((grid) => {
+    grid.addEventListener("click", handleGridClick);
+    grid.addEventListener("keydown", handleGridKeydown);
+  });
   el.filterBtn.addEventListener("click", openFilterSheet);
   el.sheetOverlay.addEventListener("click", closeFilterSheet);
   el.sheetClose.addEventListener("click", closeFilterSheet);
@@ -276,6 +280,9 @@ async function setUpFirebase(firebaseConfig) {
     firebaseModule = await import("./firebase-app.js");
     firebaseRefs = firebaseModule.initFirebase(firebaseConfig);
     firebaseModule.watchAuthState(firebaseRefs.auth, (user) => {
+      if (SHARED_UID) {
+        return;
+      }
       if (user && !state.profile) {
         loginWithFirebaseUser(user, firebaseProviderMode(user));
       } else if (!user && !state.profile) {
@@ -299,7 +306,7 @@ function firebaseProviderMode(user) {
 }
 
 async function tryAutoLoginGuest() {
-  if (state.profile) {
+  if (state.profile || SHARED_UID) {
     return;
   }
   const lastName = loadLastGuestName();
@@ -402,7 +409,7 @@ async function loginWithFirebaseUser(user, mode) {
 // colecao de outra pessoa, sem login. So funciona se o Firestore tiver a
 // regra de leitura publica em progress/{uid} (veja firestore.rules).
 async function enterShareViewIfRequested() {
-  const sharedUid = new URLSearchParams(window.location.search).get("share");
+  const sharedUid = SHARED_UID;
   if (!sharedUid || state.profile) {
     return;
   }
@@ -432,9 +439,8 @@ async function handleLogout() {
       console.error("Erro ao sair da conta:", error);
     }
   }
-  if (state.profile && state.profile.mode === "guest") {
-    clearLastGuestName();
-  }
+  // Sempre esquece o visitante salvo: sair de uma conta nao pode cair num visitante antigo.
+  clearLastGuestName();
   state.profile = null;
   state.progress = { watched: [], ratings: {}, reviews: {} };
   state.readOnly = false;
@@ -803,7 +809,7 @@ function movieCardHtml(movie, { upcoming = false } = {}) {
     `;
 
   return `
-    <article class="movie-card" data-movie-id="${movie.id}">
+    <article class="movie-card" data-movie-id="${movie.id}" tabindex="0" aria-label="${safeTitle}, abrir ficha">
       ${poster}
       <div class="movie-info">
         <h3>${safeTitle} <span class="movie-year">(${movie.year})</span></h3>
@@ -873,12 +879,25 @@ function handleGridClick(event) {
   }
 }
 
+// Enter ou espaco no card focado abre a ficha (acessibilidade por teclado).
+function handleGridKeydown(event) {
+  if ((event.key !== "Enter" && event.key !== " ") || !event.target.matches(".movie-card")) {
+    return;
+  }
+  event.preventDefault();
+  const movie = state.movies.find((candidate) => candidate.id === Number(event.target.dataset.movieId));
+  if (movie) {
+    openDetailSheet(movie);
+  }
+}
+
 // ---------- ficha do filme (sinopse, elenco, duracao, resenha) ----------
 
 async function openDetailSheet(movie) {
   state.detailMovieId = movie.id;
   renderDetailContent();
   openSheet(el.detailSheet);
+  el.detailCloseBtn.focus();
 
   if (!appConfig || !appConfig.TMDB_API_KEY) {
     return;

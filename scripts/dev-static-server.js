@@ -4,7 +4,7 @@
 // build da Vercel.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { extname, join, sep } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..");
 const PORT = Number(process.env.PORT) || 5173;
@@ -19,8 +19,22 @@ const MIME = {
 };
 
 createServer(async (request, response) => {
-  const urlPath = request.url === "/" ? "/index.html" : request.url.split("?")[0];
-  const filePath = join(ROOT, decodeURIComponent(urlPath));
+  let filePath;
+  try {
+    const urlPath = request.url === "/" ? "/index.html" : request.url.split("?")[0];
+    filePath = join(ROOT, decodeURIComponent(urlPath));
+  } catch {
+    response.writeHead(400);
+    response.end("Bad request");
+    return;
+  }
+
+  // So serve arquivo dentro do projeto (bloqueia "../../.env").
+  if (filePath !== ROOT && !filePath.startsWith(ROOT + sep)) {
+    response.writeHead(403);
+    response.end("Forbidden");
+    return;
+  }
 
   try {
     const body = await readFile(filePath);
@@ -30,4 +44,4 @@ createServer(async (request, response) => {
     response.writeHead(404);
     response.end("Not found");
   }
-}).listen(PORT, () => console.log(`Servidor estatico em http://localhost:${PORT}`));
+}).listen(PORT, "127.0.0.1", () => console.log(`Servidor estatico em http://localhost:${PORT}`));

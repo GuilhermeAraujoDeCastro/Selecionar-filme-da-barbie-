@@ -2,3 +2,4 @@ node_modules/
 js/config.js
 test-results/
 playwright-report/
+.claude/

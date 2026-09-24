@@ -11,6 +11,8 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
+    // Service worker bloqueado: senao ele buscaria os arquivos por fora dos mocks de rede.
+    serviceWorkers: "block",
   },
   webServer: {
     command: "node scripts/dev-static-server.js",

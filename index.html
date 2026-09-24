@@ -8,11 +8,12 @@
   <meta name="theme-color" content="#e0218a" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <script>
-    // Decide o tema antes do CSS carregar, pra nao piscar claro e trocar
-    // pra escuro um instante depois (FOUC). Fica fora de js/main.js de
-    // proposito: precisa rodar sincrono, antes da 1a pintura.
+    // Aplica o tema antes da 1a pintura pra tela nao piscar.
     (function () {
-      var stored = localStorage.getItem("barbie-tracker:theme");
+      var stored = null;
+      try {
+        stored = localStorage.getItem("barbie-tracker:theme");
+      } catch (e) {}
       var dark = stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
       document.documentElement.dataset.theme = dark ? "dark" : "light";
     })();

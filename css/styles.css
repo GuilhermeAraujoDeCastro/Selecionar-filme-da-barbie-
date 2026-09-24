@@ -76,6 +76,7 @@ body {
    padrao do navegador. So aparece com :focus-visible, entao nao muda nada
    pra quem clica/toca com o mouse ou dedo. */
 button:focus-visible,
+.movie-card:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
