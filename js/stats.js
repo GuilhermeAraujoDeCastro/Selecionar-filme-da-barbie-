@@ -29,18 +29,6 @@ export function genreCounts(movies, progress) {
   return counts;
 }
 
-// O genero com mais filmes assistidos; null se nao tiver nenhum filme
-// assistido com genero conhecido (cache antigo, sem genreIds ainda).
-export function mostWatchedGenre(movies, progress) {
-  const counts = genreCounts(movies, progress);
-  const entries = Object.entries(counts);
-  if (entries.length === 0) {
-    return null;
-  }
-  const [genre, count] = entries.sort((a, b) => b[1] - a[1])[0];
-  return { genre, count };
-}
-
 // O ano de lancamento com mais filmes assistidos (nao o ano em que a
 // pessoa assistiu - essa data nao existe no app, so' o ano do filme).
 export function yearWithMostWatchedReleases(movies, progress) {

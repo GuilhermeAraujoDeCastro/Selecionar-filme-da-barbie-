@@ -45,7 +45,7 @@ export function availableYears(movies) {
 // Um filme e' "concluido" quando foi marcado como assistido E ja tem nota.
 // So' assistido (sem nota ainda) continua contando como pendente e fica na
 // grade principal, esperando a nota.
-export function isCompleted(progress, movieId) {
+function isCompleted(progress, movieId) {
   return progress.watched.includes(movieId) && Boolean(progress.ratings[movieId]);
 }
 

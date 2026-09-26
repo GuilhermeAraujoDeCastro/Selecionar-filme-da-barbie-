@@ -46,7 +46,7 @@ export async function searchBarbieMovies(apiKey, fetchImpl = fetch, genreMap = {
 }
 
 // Animacao/familia e nenhum genero bloqueado.
-export function hasFranchiseGenre(movie) {
+function hasFranchiseGenre(movie) {
   const genres = Array.isArray(movie.genre_ids) ? movie.genre_ids : [];
   if (genres.some((id) => BLOCKED_GENRES.includes(id))) {
     return false;
@@ -55,7 +55,7 @@ export function hasFranchiseGenre(movie) {
 }
 
 // Pra busca por texto a regra e' mais dura: tambem exige ingles e votos suficientes.
-export function looksLikeFranchise(movie) {
+function looksLikeFranchise(movie) {
   return hasFranchiseGenre(movie) && movie.original_language === "en" && (movie.vote_count || 0) >= MIN_VOTES_WITHOUT_MATTEL;
 }
 
@@ -139,7 +139,7 @@ async function fetchCollectionParts(collectionId, apiKey, fetchImpl) {
 
 // requireBarbieInTitle desligado so' faz sentido pra resultado que ja veio
 // de uma collection da franquia (veja searchByCollections acima).
-export function normalizeMovies(rawResults, { requireBarbieInTitle = true, genreMap = {} } = {}) {
+function normalizeMovies(rawResults, { requireBarbieInTitle = true, genreMap = {} } = {}) {
   return rawResults
     .filter((movie) => movie.title && (!requireBarbieInTitle || movie.title.toLowerCase().includes("barbie")))
     .map((movie) => ({
