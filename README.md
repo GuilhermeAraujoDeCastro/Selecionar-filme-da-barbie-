@@ -1,8 +1,10 @@
 # Barbie Movies Tracker
 
+![Tela inicial do Barbie Movies Tracker](docs/capa.png)
+
 Catálogo dos filmes da Barbie pra marcar os que você já viu, dar nota, escrever uma resenha curta e acompanhar o progresso. Os dados dos filmes vêm do TMDB.
 
-Site: https://selecionar-filme-da-barbie.vercel.app
+Site: https://barbie-movies-tracker.vercel.app
 
 ## O que tem
 
@@ -48,9 +50,7 @@ Selecionar-filme-da-barbie-/
 │   ├── firebase-app.js      login e dados na nuvem
 │   ├── backup.js
 │   └── config.example.js    modelo das chaves
-├── scripts/                 build e servidor local
-├── tests/                   testes unitários
-└── e2e/                     testes no navegador
+└── scripts/                 build e servidor local
 ```
 
 ## Rodando na sua máquina
@@ -63,16 +63,6 @@ npm run dev
 
 No Linux ou no macOS, troque o `copy` por `cp js/config.example.js js/config.js`. Preencha o `js/config.js` com a sua chave do TMDB; as instruções estão no próprio arquivo. O Firebase só é necessário pro login, pro link público e pras notificações. O `js/config.js` fica fora do git.
 
-## Testes
-
-```bash
-npm test
-npx playwright install chromium
-npm run test:e2e
-```
-
-São 87 testes unitários (filtros, progresso, notas, resenhas, estatísticas, TMDB, backup e armazenamento local) e 4 testes no navegador do fluxo de visitante. O GitHub Actions roda tudo a cada push.
-
 ## Deploy na Vercel
 
 O build gera o `js/config.js` a partir das variáveis de ambiente do projeto na Vercel, então as chaves não ficam no repositório:
@@ -82,6 +72,8 @@ O build gera o `js/config.js` a partir das variáveis de ambiente do projeto na 
 - opcionais: `SENTRY_DSN` e `VAPID_PUBLIC_KEY`
 
 A function de notificação também usa `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` e `CRON_SECRET`.
+
+O GitHub Actions roda o build de produção a cada push, com chaves falsas, pra pegar erro antes da Vercel.
 
 As regras do Firestore ficam em `firestore.rules` e precisam ser publicadas no Firebase Console (Firestore Database, Regras).
 
