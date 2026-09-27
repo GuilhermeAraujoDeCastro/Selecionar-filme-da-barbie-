@@ -79,4 +79,4 @@ As regras do Firestore ficam em `firestore.rules` e precisam ser publicadas no F
 
 ## Licença
 
-Veja o arquivo LICENSE.
+Código sob a licença MIT (veja o arquivo LICENSE).
