@@ -133,7 +133,7 @@ async function init() {
   registerServiceWorker();
   appConfig = await loadConfig();
 
-  if (!appConfig || !appConfig.TMDB_API_KEY) {
+  if (!temTmdb()) {
     el.configWarning.hidden = false;
   }
   if (appConfig && appConfig.SENTRY_DSN) {
@@ -547,8 +547,13 @@ function closeDetailSheet() {
 
 // ---------- busca dos filmes na TMDB ----------
 
+// Chave no js/config.js (rodando local) ou proxy /api/tmdb (publicado: a chave fica so' na Vercel).
+function temTmdb() {
+  return Boolean(appConfig && (appConfig.TMDB_API_KEY || appConfig.TMDB_PROXY));
+}
+
 async function ensureGenreMap() {
-  if (!appConfig || !appConfig.TMDB_API_KEY) {
+  if (!temTmdb()) {
     return;
   }
   try {
@@ -585,7 +590,7 @@ async function loadMovies({ forceRefresh }) {
     }
   }
 
-  if (!appConfig || !appConfig.TMDB_API_KEY) {
+  if (!temTmdb()) {
     if (state.movies.length === 0) {
       showListStatus("Sem chave da TMDB configurada, entao ainda nao da pra buscar os filmes.");
     }
@@ -899,7 +904,7 @@ async function openDetailSheet(movie) {
   openSheet(el.detailSheet);
   el.detailCloseBtn.focus();
 
-  if (!appConfig || !appConfig.TMDB_API_KEY) {
+  if (!temTmdb()) {
     return;
   }
   try {
@@ -1019,14 +1024,21 @@ function handleDetailClick(event) {
   }
 }
 
-const saveReviewDebounced = debounce((movieId, text) => {
-  const validated = validateReview(text);
-  if (validated === null) {
-    return;
+// Um debounce por filme: com um so', digitar na resenha de B logo depois de A cancelava o salvamento de A.
+const salvadoresDeResenha = new Map();
+function saveReviewDebounced(movieId, text) {
+  if (!salvadoresDeResenha.has(movieId)) {
+    salvadoresDeResenha.set(movieId, debounce((texto) => {
+      const validated = validateReview(texto);
+      if (validated === null) {
+        return;
+      }
+      state.progress = setReview(state.progress, movieId, validated);
+      persistProgress();
+    }, 400));
   }
-  state.progress = setReview(state.progress, movieId, validated);
-  persistProgress();
-}, 400);
+  salvadoresDeResenha.get(movieId)(text);
+}
 
 function handleDetailReviewInput(event) {
   if (state.readOnly || !state.detailMovieId || event.target.id !== "review-textarea") {
@@ -1040,7 +1052,12 @@ function persistProgress() {
     return; // seguranca extra: nunca grava em cima de uma colecao compartilhada
   }
   if (state.profile.mode === "guest") {
-    saveLocalProgress(state.profile.id, state.progress);
+    // Sem espaco (ou storage bloqueado) o erro parava o clique antes do render e o botao parecia quebrado.
+    try {
+      saveLocalProgress(state.profile.id, state.progress);
+    } catch (error) {
+      console.error("Erro ao salvar progresso localmente:", error);
+    }
   } else if (firebaseModule && firebaseRefs) {
     firebaseModule.saveUserProgress(firebaseRefs.db, state.profile.id, state.progress).catch((error) => {
       console.error("Erro ao salvar progresso no Firestore:", error);
