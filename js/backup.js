@@ -2,6 +2,8 @@
 // que perde tudo se limpar o navegador. Funcao pura: nao mexe em arquivo
 // nem em DOM, so' monta/valida o objeto.
 
+import { validateReview } from "./reviews.js";
+
 export function exportProgressPayload(profile, progress) {
   return {
     exportedAt: new Date().toISOString(),
@@ -41,7 +43,12 @@ export function parseImportedProgress(rawJson) {
 
   const reviews =
     progress.reviews && typeof progress.reviews === "object"
-      ? Object.fromEntries(Object.entries(progress.reviews).filter(([, value]) => typeof value === "string"))
+      ? Object.fromEntries(
+          // Mesmo limite da tela (500 caracteres): JSON editado a mao nao entra com resenha gigante.
+          Object.entries(progress.reviews)
+            .map(([id, value]) => [id, validateReview(value)])
+            .filter(([, value]) => typeof value === "string"),
+        )
       : {};
 
   return { watched, ratings, reviews };
