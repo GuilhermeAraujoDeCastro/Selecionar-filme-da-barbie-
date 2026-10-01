@@ -35,10 +35,11 @@ function getDb() {
 }
 
 export default async function handler(request, response) {
-  // A Vercel manda esse header sozinha nas invocacoes de cron de verdade;
-  // CRON_SECRET (opcional) trava chamadas manuais na URL publica da function.
-  if (process.env.CRON_SECRET && request.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-    response.status(401).json({ error: "Nao autorizado." });
+  // A Vercel manda "Authorization: Bearer <CRON_SECRET>" sozinha no cron de verdade. Sem a variavel
+  // configurada a function recusa tudo: antes qualquer um chamava a URL publica e gastava TMDB e Firestore.
+  const segredo = process.env.CRON_SECRET;
+  if (!segredo || request.headers.authorization !== `Bearer ${segredo}`) {
+    response.status(401).json({ error: "Nao autorizado (configure CRON_SECRET na Vercel)." });
     return;
   }
 
@@ -55,7 +56,11 @@ export default async function handler(request, response) {
     const knownSnapshot = await knownRef.get();
     const isFirstRun = !knownSnapshot.exists;
     const knownIds = new Set(isFirstRun ? [] : knownSnapshot.data().ids || []);
-    const newMovies = movies.filter((movie) => !knownIds.has(movie.id));
+    // ID novo nem sempre e' filme novo: a TMDB corrige empresa/genero e um filme de 2008 aparece na busca.
+    // So' avisa lancamento dos ultimos 60 dias ou que ainda vai sair.
+    const corte = Date.now() - 60 * 86400000;
+    const newMovies = movies.filter((movie) => !knownIds.has(movie.id)
+      && movie.releaseDate && new Date(movie.releaseDate).getTime() >= corte);
 
     await knownRef.set({ ids: movies.map((movie) => movie.id), updatedAt: Date.now() });
 
@@ -86,7 +91,12 @@ export default async function handler(request, response) {
             await webpush.sendNotification(doc.data().subscription, payload);
             notified += 1;
           } catch (error) {
-            console.error(`Push falhou pra ${doc.id}:`, error.message);
+            // 404/410: inscricao morta (permissao revogada, app desinstalado). Apaga pra nao tentar todo dia.
+            if (error.statusCode === 404 || error.statusCode === 410) {
+              await doc.ref.delete().catch(() => {});
+            } else {
+              console.error(`Push falhou pra ${doc.id}:`, error.message);
+            }
           }
         }),
       );
