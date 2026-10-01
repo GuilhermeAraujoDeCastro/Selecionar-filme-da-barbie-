@@ -8,6 +8,19 @@
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const MAX_PAGES = 5; // trava de seguranca: no maximo 5 paginas (ate 100 resultados)
+const MAX_PAGES_MATTEL = 7; // a Mattel tem mais filme (Hot Wheels, Polly...): 2 paginas a mais nessa busca
+
+// Com a chave (function do servidor ou js/config.js local) chama a TMDB direto. Sem ela, vai pelo
+// proxy /api/tmdb, que guarda a chave na Vercel: assim ela nao chega no navegador de quem visita.
+function tmdbUrl(caminho, params, apiKey) {
+  const busca = new URLSearchParams(params);
+  if (apiKey) {
+    busca.set("api_key", apiKey);
+    return `${TMDB_BASE_URL}${caminho}?${busca}`;
+  }
+  busca.set("caminho", caminho);
+  return `/api/tmdb?${busca}`;
+}
 
 // Empresas da Mattel cadastradas na TMDB. Filme com qualquer uma delas e' da franquia.
 const MATTEL_COMPANY_IDS = [6220, 87780, 49983, 302609, 137586, 168848, 33365, 215690, 8810];
@@ -66,7 +79,9 @@ async function searchByMattel(apiKey, fetchImpl) {
     let page = 1;
     let totalPages = 1;
     do {
-      const url = `${TMDB_BASE_URL}/discover/movie?api_key=${encodeURIComponent(apiKey)}&with_companies=${MATTEL_COMPANY_IDS.join("|")}&language=pt-BR&include_adult=false&page=${page}`;
+      const url = tmdbUrl("/discover/movie", {
+        with_companies: MATTEL_COMPANY_IDS.join("|"), language: "pt-BR", include_adult: "false", page,
+      }, apiKey);
       const response = await fetchImpl(url);
       if (!response.ok) {
         return allResults;
@@ -75,7 +90,7 @@ async function searchByMattel(apiKey, fetchImpl) {
       allResults.push(...(data.results || []));
       totalPages = data.total_pages || 1;
       page += 1;
-    } while (page <= totalPages && page <= MAX_PAGES + 2);
+    } while (page <= totalPages && page <= MAX_PAGES_MATTEL);
     return allResults;
   } catch (error) {
     console.error("Nao foi possivel buscar os filmes da Mattel na TMDB:", error);
@@ -90,7 +105,7 @@ async function fetchTitlePages(apiKey, fetchImpl) {
   let totalPages = 1;
 
   do {
-    const url = `${TMDB_BASE_URL}/search/movie?api_key=${encodeURIComponent(apiKey)}&query=Barbie&language=pt-BR&include_adult=false&page=${page}`;
+    const url = tmdbUrl("/search/movie", { query: "Barbie", language: "pt-BR", include_adult: "false", page }, apiKey);
     const response = await fetchImpl(url);
     if (!response.ok) {
       throw new Error(`Erro da TMDB: ${response.status}`);
@@ -109,7 +124,7 @@ async function fetchTitlePages(apiKey, fetchImpl) {
 // collections (a busca por texto sozinha ja cobre a maioria dos filmes).
 async function searchByCollections(apiKey, fetchImpl) {
   try {
-    const url = `${TMDB_BASE_URL}/search/collection?api_key=${encodeURIComponent(apiKey)}&query=Barbie&language=pt-BR`;
+    const url = tmdbUrl("/search/collection", { query: "Barbie", language: "pt-BR" }, apiKey);
     const response = await fetchImpl(url);
     if (!response.ok) {
       return [];
@@ -128,7 +143,7 @@ async function searchByCollections(apiKey, fetchImpl) {
 }
 
 async function fetchCollectionParts(collectionId, apiKey, fetchImpl) {
-  const url = `${TMDB_BASE_URL}/collection/${collectionId}?api_key=${encodeURIComponent(apiKey)}&language=pt-BR`;
+  const url = tmdbUrl(`/collection/${collectionId}`, { language: "pt-BR" }, apiKey);
   const response = await fetchImpl(url);
   if (!response.ok) {
     return [];
@@ -159,7 +174,7 @@ function normalizeMovies(rawResults, { requireBarbieInTitle = true, genreMap = {
 // Perfil. Endpoint publico da TMDB, nao muda com frequencia - dá pra
 // cachear no cliente por bastante tempo (main.js cuida disso).
 export async function fetchGenreMap(apiKey, fetchImpl = fetch) {
-  const url = `${TMDB_BASE_URL}/genre/movie/list?api_key=${encodeURIComponent(apiKey)}&language=pt-BR`;
+  const url = tmdbUrl("/genre/movie/list", { language: "pt-BR" }, apiKey);
   const response = await fetchImpl(url);
   if (!response.ok) {
     throw new Error(`Erro da TMDB: ${response.status}`);
@@ -176,7 +191,7 @@ export async function fetchGenreMap(apiKey, fetchImpl = fetch) {
 // ficha de um filme (nao pros ~40 filmes de uma vez, que seria 40 chamadas
 // extras so' pra listar a colecao).
 export async function fetchMovieDetail(movieId, apiKey, fetchImpl = fetch) {
-  const url = `${TMDB_BASE_URL}/movie/${movieId}?api_key=${encodeURIComponent(apiKey)}&language=pt-BR&append_to_response=credits`;
+  const url = tmdbUrl(`/movie/${movieId}`, { language: "pt-BR", append_to_response: "credits" }, apiKey);
   const response = await fetchImpl(url);
   if (!response.ok) {
     throw new Error(`Erro da TMDB: ${response.status}`);

@@ -40,7 +40,8 @@ Selecionar-filme-da-barbie-/
 ├── firestore.rules          regras de segurança do banco
 ├── vercel.json              build e cron da notificação
 ├── api/
-│   └── notify-new-movies.js
+│   ├── notify-new-movies.js
+│   └── tmdb.js              proxy da TMDB (a chave fica no servidor)
 ├── css/
 ├── js/
 │   ├── main.js              liga a tela aos módulos
@@ -67,11 +68,11 @@ No Linux ou no macOS, troque o `copy` por `cp js/config.example.js js/config.js`
 
 O build gera o `js/config.js` a partir das variáveis de ambiente do projeto na Vercel, então as chaves não ficam no repositório:
 
-- `TMDB_API_KEY`
+- `TMDB_API_KEY`, que fica só no servidor: no site publicado o navegador busca os filmes por `api/tmdb.js`, que acrescenta a chave
 - `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`
 - opcionais: `SENTRY_DSN` e `VAPID_PUBLIC_KEY`
 
-A function de notificação também usa `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` e `CRON_SECRET`.
+A function de notificação também usa `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` e `CRON_SECRET`. Sem o `CRON_SECRET` ela recusa qualquer chamada, inclusive a do cron. Só avisa filme lançado nos últimos 60 dias ou que ainda vai sair.
 
 O GitHub Actions roda o build de produção a cada push, com chaves falsas, pra pegar erro antes da Vercel.
 

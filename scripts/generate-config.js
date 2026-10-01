@@ -25,7 +25,9 @@ if (faltando.length > 0) {
 const conteudo = `// Gerado automaticamente pelo build da Vercel (scripts/generate-config.js).
 // Nao edite este arquivo no repositorio publicado: edite as variaveis de
 // ambiente do projeto (Project Settings > Environment Variables).
-export const TMDB_API_KEY = ${JSON.stringify(process.env.TMDB_API_KEY || "")};
+// A chave da TMDB nao vem pro navegador: o site busca pelo proxy /api/tmdb (api/tmdb.js).
+export const TMDB_API_KEY = "";
+export const TMDB_PROXY = ${JSON.stringify(Boolean(process.env.TMDB_API_KEY))};
 
 export const FIREBASE_CONFIG = {
   apiKey: ${JSON.stringify(process.env.FIREBASE_API_KEY || "")},
